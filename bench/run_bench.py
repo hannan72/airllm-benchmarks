@@ -312,6 +312,9 @@ def main():
     ap.add_argument("--out-dir", default=str(HERE.parent / "results" / "local"))
     ap.add_argument("--delete-original", action="store_true",
                     help="let AirLLM delete original shards after splitting (needs an index.json)")
+    ap.add_argument("--stream-download", action="store_true",
+                    help="skip the up-front download; AirLLM fetches shards one by one while splitting "
+                         "(with --delete-original the full checkpoint never sits on disk)")
     ap.add_argument("--no-prefetch", action="store_true")
     ap.add_argument("--stock", action="store_true", help="use AirLLM's stock class (Qwen keeps vision tower)")
     ap.add_argument("--skip-warm", action="store_true")
@@ -368,10 +371,10 @@ def main():
         # -- download --------------------------------------------------------------------------
         split_preexisting = split_dir.exists() and any(split_dir.glob("*.done"))
         t = time.perf_counter()
-        if not split_preexisting:
+        if not split_preexisting and not args.stream_download:
             snapshot_download(repo_id)
+        result["phases"]["stream_download"] = bool(args.stream_download)
         result["phases"]["download_s"] = round(time.perf_counter() - t, 2)
-        huggingface_hub.constants.HF_HUB_OFFLINE = True  # no network from here on
 
         # -- convert (split) ----------------------------------------------------------------------
         phase = "convert"
@@ -394,6 +397,8 @@ def main():
         result["phases"]["split_size_gb"] = dir_size_gb(split_dir)
         result["phases"]["convert_mem"] = sampler.snapshot()
         save()
+        # all shards are split now (stream mode needed the network until here)
+        huggingface_hub.constants.HF_HUB_OFFLINE = True
 
         # -- init ---------------------------------------------------------------------------------
         phase = "init"

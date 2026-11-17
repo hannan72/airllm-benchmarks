@@ -86,6 +86,44 @@ class AirLLMGemma4(AirLLMBaseModel):
                 setattr(self.config, attr, None)
         super().init_model()
 
+    def move_layer_to_device(self, state_dict):
+        # KV-shared layers (the last ``num_kv_shared_layers``) reuse earlier layers' K/V and have
+        # no k_proj / v_proj modules, yet the checkpoint still ships those tensors (transformers
+        # drops them via ``_keys_to_ignore_on_load_unexpected``). Skip tensors with no module.
+        cache = self.__dict__.setdefault("_module_exists", {})
+        keep = {}
+        for key, value in state_dict.items():
+            path = key.split(".4bit.")[0].split(".8bit.")[0].rsplit(".", 1)[0]
+            if path not in cache:
+                try:
+                    self.model.get_submodule(path)
+                    cache[path] = True
+                except AttributeError:
+                    cache[path] = False
+            if cache[path]:
+                keep[key] = value
+        return super().move_layer_to_device(keep)
+
+    def _install_streaming_hooks(self):
+        text_cfg = self.config.get_text_config()
+        tied = bool(getattr(self.config, "tie_word_embeddings", False))
+        if not getattr(text_cfg, "hidden_size_per_layer_input", 0) or tied:
+            return super()._install_streaming_hooks()
+        # Gemma4Model.forward reads ``embed_tokens.weight[pad_token_id]`` directly (outside the
+        # module call) for PLE models, so a streamed input embedding would still be on 'meta'
+        # there. With tied embeddings AirLLM already keeps it resident; the untied QAT "-ct"
+        # checkpoint needs the same treatment. lm_head is still streamed.
+        self.tie_word_embeddings = False
+        self.move_layer_to_device(self.load_layer_to_cpu(self.layer_names[0]))
+        self._streamed_indices = list(range(1, len(self.layer_names)))
+        self._streamed_set = set(self._streamed_indices)
+        self._setup_expert_streaming()
+        for idx in self._streamed_indices:
+            module = self.layers[idx]
+            module._airllm_idx = idx
+            module.register_forward_pre_hook(self._pre_hook)
+            module.register_forward_hook(self._post_hook)
+
     # ---- PLE table on CPU -----------------------------------------------------------------
 
     def _load_cpu_resident_modules(self):

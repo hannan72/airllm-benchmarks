@@ -34,16 +34,29 @@ SIZE_GB = {
     "Qwen3.8-27B": 55.6,
 }
 
-# (model, [compressions], max_new_tokens)
-LOCAL_PLAN = [
-    ("gemma-4-E2B-it-qat-mobile-ct", ["none"], 32),  # already int2/int4/int8 (compressed-tensors)
-    ("gemma-4-E4B-it", ["4bit", "none"], 32),
-    ("Qwen3.5-9B", ["4bit", "none"], 32),
-    ("gemma-4-12B-it", ["4bit", "none"], 32),
-    ("gemma-4-26B-A4B-it", ["4bit", "none"], 16),
-    ("Qwen3.6-27B", ["4bit", "none"], 16),
-    ("Qwen3.8-27B", ["4bit", "none"], 16),
-]
+# (model, [compressions], max_new_tokens, extra run_bench args)
+PLANS = {
+    # 8 GB laptop GPU, ~150 GB free disk: keep originals, run bf16 and 4-bit for every model
+    "local": [
+        ("gemma-4-E2B-it-qat-mobile-ct", ["none"], 32, []),  # already int2/int4/int8 (compressed-tensors)
+        ("gemma-4-E4B-it", ["4bit", "none"], 32, []),
+        ("Qwen3.5-9B", ["4bit", "none"], 32, []),
+        ("gemma-4-12B-it", ["4bit", "none"], 32, []),
+        ("gemma-4-26B-A4B-it", ["4bit", "none"], 16, []),
+        ("Qwen3.6-27B", ["4bit", "none"], 16, []),
+        ("Qwen3.8-27B", ["4bit", "none"], 16, []),
+    ],
+    # Kaggle T4: limited disk, so the >25B models stream shards and keep only the 4-bit split
+    "kaggle": [
+        ("gemma-4-E2B-it-qat-mobile-ct", ["none"], 32, []),
+        ("gemma-4-E4B-it", ["4bit", "none"], 32, []),
+        ("Qwen3.5-9B", ["4bit", "none"], 32, []),
+        ("gemma-4-12B-it", ["4bit", "none"], 32, []),
+        ("gemma-4-26B-A4B-it", ["4bit"], 16, ["--stream-download", "--delete-original"]),
+        ("Qwen3.6-27B", ["4bit"], 16, ["--stream-download", "--delete-original"]),
+        ("Qwen3.8-27B", ["4bit"], 16, ["--stream-download", "--delete-original"]),
+    ],
+}
 
 
 def repo_of(model):
@@ -54,9 +67,9 @@ def repo_of(model):
 
 
 def hf_cache_dir(model):
-    repo = repo_of(model)
-    hub = Path(os.environ.get("HF_HUB_CACHE", Path.home() / ".cache" / "huggingface" / "hub"))
-    return hub / ("models--" + repo.replace("/", "--"))
+    from huggingface_hub import constants  # honours HF_HOME / HF_HUB_CACHE
+
+    return Path(constants.HF_HUB_CACHE) / ("models--" + repo_of(model).replace("/", "--"))
 
 
 def free_gb(path="/"):
@@ -114,6 +127,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out-dir", default=str(ROOT / "results" / "local-rtx2070"))
     ap.add_argument("--work-dir", default=str(Path.home() / "airllm-work"))
+    ap.add_argument("--plan", default="local", choices=sorted(PLANS))
     ap.add_argument("--only", nargs="*", help="subset of model names")
     ap.add_argument("--cleanup", action="store_true", help="delete split layers + HF cache after each model")
     ap.add_argument("--no-prefetch", action="store_true")
@@ -124,12 +138,12 @@ def main():
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     (ROOT / "logs").mkdir(exist_ok=True)
-    plan = [p for p in LOCAL_PLAN if not args.only or p[0] in args.only]
+    plan = [p for p in PLANS[args.plan] if not args.only or p[0] in args.only]
     env = dict(os.environ, BENCH_HOST_TAG=os.environ.get("BENCH_HOST_TAG", out_dir.name),
                PYTORCH_CUDA_ALLOC_CONF="expandable_segments:True")
 
     prefetcher = None
-    for i, (model, comps, max_new) in enumerate(plan):
+    for i, (model, comps, max_new, extra) in enumerate(plan):
         # background-download the next model if it fits alongside this one's peak
         if not args.no_prefetch and i + 1 < len(plan) and prefetcher is None:
             nxt = plan[i + 1][0]
@@ -145,7 +159,8 @@ def main():
                 wait_for_idle_gpu()
             print(f"[matrix] >>> {model} {comp}  free disk {free_gb():.0f} GB", flush=True)
             cmd = [PY, str(HERE / "run_bench.py"), "--model", model, "--compression", comp,
-                   "--max-new-tokens", str(max_new), "--out-dir", str(out_dir), "--work-dir", args.work_dir]
+                   "--max-new-tokens", str(max_new), "--out-dir", str(out_dir), "--work-dir", args.work_dir,
+                   *extra]
             with open(ROOT / "logs" / f"{out_dir.name}_{model}__{comp}.log", "w") as log:
                 try:
                     rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, env=env,
