@@ -71,7 +71,7 @@ class Sampler(threading.Thread):
             for p in self.nvml.nvmlDeviceGetComputeRunningProcesses(self.handle):
                 if p.pid == os.getpid():
                     mine = p.usedGpuMemory or 0
-                else:
+                elif (p.usedGpuMemory or 0) > 256 * 2**20:
                     self.other_gpu_pids.add(p.pid)  # another workload shared the GPU
         except Exception:  # noqa: BLE001
             pass

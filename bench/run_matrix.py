@@ -83,7 +83,9 @@ def other_gpu_procs():
 
         pynvml.nvmlInit()
         h = pynvml.nvmlDeviceGetHandleByIndex(0)
-        procs = [p.pid for p in pynvml.nvmlDeviceGetComputeRunningProcesses(h) if p.pid != os.getpid()]
+        # ignore tiny desktop clients (e.g. gnome-remote-desktop holds ~100 MB)
+        procs = [p.pid for p in pynvml.nvmlDeviceGetComputeRunningProcesses(h)
+                 if p.pid != os.getpid() and (p.usedGpuMemory or 0) > 256 * 2**20]
         used = pynvml.nvmlDeviceGetMemoryInfo(h).used / 1e9
         return procs, used
     except Exception:  # noqa: BLE001
