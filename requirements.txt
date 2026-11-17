@@ -1,0 +1,12 @@
+airllm==4.0.0
+torch>=2.4
+transformers>=5.8,<6
+accelerate
+safetensors
+bitsandbytes
+compressed-tensors
+huggingface_hub[hf_xet]
+psutil
+nvidia-ml-py
+sentencepiece
+scipy
