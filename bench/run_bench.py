@@ -60,6 +60,7 @@ class Sampler(threading.Thread):
         self.peak_rss = 0
         self.peak_gpu_device = 0
         self.peak_gpu_process = 0
+        self.other_gpu_pids = set()
 
     def gpu(self):
         if self.nvml is None:
@@ -68,8 +69,10 @@ class Sampler(threading.Thread):
         mine = 0
         try:
             for p in self.nvml.nvmlDeviceGetComputeRunningProcesses(self.handle):
-                if p.pid == os.getpid() and p.usedGpuMemory:
-                    mine = p.usedGpuMemory
+                if p.pid == os.getpid():
+                    mine = p.usedGpuMemory or 0
+                else:
+                    self.other_gpu_pids.add(p.pid)  # another workload shared the GPU
         except Exception:  # noqa: BLE001
             pass
         return dev, mine
@@ -93,6 +96,7 @@ class Sampler(threading.Thread):
             "peak_rss_gb": round(self.peak_rss / 1e9, 3),
             "peak_gpu_device_used_gb": round(self.peak_gpu_device / 1e9, 3),
             "peak_gpu_process_gb": round(self.peak_gpu_process / 1e9, 3),
+            "other_gpu_pids_seen": sorted(self.other_gpu_pids),
         }
 
 

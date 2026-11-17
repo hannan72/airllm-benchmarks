@@ -90,15 +90,22 @@ def other_gpu_procs():
         return [], 0.0
 
 
-def wait_for_idle_gpu(max_used_gb=1.0, poll_s=60):
+def wait_for_idle_gpu(max_used_gb=1.0, poll_s=30, idle_for_s=300):
+    """Block until no other process has used the GPU for ``idle_for_s`` seconds in a row
+    (another workload on this machine runs sweeps back to back with short gaps)."""
     waited = 0
+    idle_since = None
     while True:
         procs, used = other_gpu_procs()
         if not procs and used < max_used_gb:
-            if waited:
-                print(f"[matrix] GPU idle after waiting {waited // 60} min", flush=True)
-            return
-        if waited % 600 == 0:
+            idle_since = idle_since if idle_since is not None else waited
+            if waited - idle_since >= idle_for_s or waited == 0 and idle_for_s == 0:
+                if waited:
+                    print(f"[matrix] GPU idle for {idle_for_s // 60} min (waited {waited // 60} min total)", flush=True)
+                return
+        else:
+            idle_since = None
+        if waited % 900 == 0 and procs:
             print(f"[matrix] GPU busy (pids={procs}, used={used:.1f} GB); waiting...", flush=True)
         time.sleep(poll_s)
         waited += poll_s
