@@ -131,9 +131,11 @@ _VLLM_PATTERNS = {
     "kv_cache_gib": (r"Available KV cache memory: ([\d.]+) ?GiB", float),
     "kv_cache_tokens": (r"GPU KV cache size: ([\d,]+) tokens", lambda s: int(s.replace(",", ""))),
     "max_concurrency": (r"Maximum concurrency for [\d,]+ tokens per request: ([\d.]+)x", float),
-    "compile_s": (r"torch\.compile takes ([\d.]+) ?s in total", float),
+    "compile_s": (r"torch\.compile (?:takes|took) ([\d.]+) ?s in total", float),
     "graph_capture_s": (r"Graph capturing finished in ([\d.]+) ?sec", float),
     "attention_backend": (r"Using ([A-Z_]+[A-Z0-9_]*) (?:attention )?backend", str),
+    "weights_read_s": (r"Loading weights took ([\d.]+) ?s", float),
+    "engine_init_s": (r"init engine \(.*\) took ([\d.]+) ?s", float),
 }
 
 
@@ -169,6 +171,8 @@ def vllm_bench(path, args, result, sampler):
               gpu_memory_utilization=args.gpu_mem, enable_prefix_caching=False, seed=0)
     if args.quantization:
         kw["quantization"] = args.quantization
+    if args.max_num_seqs:  # hybrid (Mamba / Gated DeltaNet) models: one state block per running sequence
+        kw["max_num_seqs"] = args.max_num_seqs
     mods = modalities(path)
     if mods:
         kw["limit_mm_per_prompt"] = {m: 0 for m in mods}
@@ -315,6 +319,7 @@ def main():
     ap.add_argument("--batch-tokens", type=int, default=256)
     ap.add_argument("--max-model-len", type=int, default=4096)
     ap.add_argument("--gpu-mem", type=float, default=0.90)
+    ap.add_argument("--max-num-seqs", type=int, default=0, help="vllm: cap on concurrent sequences (0 = vLLM default)")
     ap.add_argument("--prompt", default=DEFAULT_PROMPT)
     ap.add_argument("--out-dir", default=str(HERE.parent / "results" / "direct"))
     args = ap.parse_args()

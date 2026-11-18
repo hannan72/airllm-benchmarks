@@ -1,14 +1,14 @@
 ### Decode tok/s by GPU
 
-| Model | RTX 2070 8 GB<br>AirLLM tuned | T4 16 GB<br>AirLLM tuned | ZeroGPU RTX PRO 6000<br>transformers bf16 |
-|---|---|---|---|
-| gemma-4-E2B-it-qat-mobile-ct | 0.90 | 0.78 | fails to load |
-| gemma-4-E4B-it | 1.55 | 0.97 | 23.7 |
-| Qwen3.5-9B | 1.05 | 0.59 | 30.6 |
-| gemma-4-12B-it | 0.85 | 0.47 | 20.0 |
-| gemma-4-26B-A4B-it | 0.38 | 0.20 | 19.6 |
-| Qwen3.6-27B | 0.08 | 0.20 | 16.5 |
-| Qwen3.8-27B | 0.08 | 0.21 | 16.6 |
+| Model | RTX 2070 8 GB<br>AirLLM tuned | T4 16 GB<br>AirLLM tuned | ZeroGPU RTX PRO 6000<br>transformers bf16 | A100 40 GB<br>vLLM | A100 80 GB<br>vLLM bf16 | H100 80 GB<br>vLLM bf16 |
+|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | 0.90 | 0.78 | fails to load | 226.7 | 237.9 | 254.6 |
+| gemma-4-E4B-it | 1.55 | 0.97 | 23.7 | 98.8 | 116.5 | 175.6 |
+| Qwen3.5-9B | 1.05 | 0.59 | 30.6 | 73.3 | 88.1 | 150.1 |
+| gemma-4-12B-it | 0.85 | 0.47 | 20.0 | 48.2 | 57.2 | 93.1 |
+| gemma-4-26B-A4B-it | 0.38 | 0.20 | 19.6 | 143.7 (fp8) | 138.1 | 206.1 |
+| Qwen3.6-27B | 0.08 | 0.20 | 16.5 | 38.6 (fp8) | 29.0 | 49.3 |
+| Qwen3.8-27B | 0.08 | 0.21 | 16.6 | 38.6 (fp8) | 29.1 | 52.0 |
 
 ### kaggle-t4
 
@@ -113,13 +113,55 @@ I/O breakdown (cold run):
 | Qwen3.8-27B | bf16 | 53.79 | 30.68 s | 1.75 | 8.40 s | on |
 | Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
 
+### modal-a100-40 (direct, no AirLLM)
+
+NVIDIA A100-SXM4-40GB (42.43 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | vLLM 0.34.0, int4/int2 QAT as shipped | 2.7 GB | 14 s | 313 s | 0.018 s | **226.7** | 5471 | 2.5 / 31.7 GiB | A CPU cache is a small, very fast memory located close to… |
+| gemma-4-E4B-it | vLLM 0.34.0, bf16 | 16.0 GB | 75 s | 290 s | 0.033 s | **98.8** | 2796 | 14.6 / 19.7 GiB | A CPU cache is a small, extremely fast memory located close to… |
+| Qwen3.5-9B | vLLM 0.34.0, bf16 | 19.3 GB | 119 s | 252 s | 0.031 s | **73.3** | 1904 | 16.7 / 15.5 GiB | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | vLLM 0.34.0, bf16 | 23.9 GB | 156 s | 272 s | 0.027 s | **48.2** | 1285 | 22.8 / 11.4 GiB | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | vLLM 0.34.0, fp8 | 51.6 GB | 224 s | 324 s | 0.020 s | **143.7** | 2949 | 25.8 / 7.7 GiB | A CPU cache acts as a high-speed buffer between the fast processor… |
+| Qwen3.6-27B | vLLM 0.34.0, fp8 | 55.6 GB | 178 s | 292 s | 0.058 s | **38.6** | 361 | 27.5 / 4.5 GiB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | vLLM 0.34.0, fp8 | 55.6 GB | 173 s | 287 s | 0.058 s | **38.6** | 360 | 28.1 / 4.0 GiB | A CPU cache is a small, high-speed memory located on or near… |
+
+### modal-a100-80 (direct, no AirLLM)
+
+NVIDIA A100-SXM4-80GB (85.12 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | vLLM 0.34.0, int4/int2 QAT as shipped | 2.7 GB | 14 s | 310 s | 0.020 s | **237.9** | 5616 | 2.5 / 67.5 GiB | A CPU cache is a small, very fast memory located close to… |
+| gemma-4-E4B-it | vLLM 0.34.0, bf16 | 16.0 GB | 75 s | 295 s | 0.018 s | **116.5** | 3276 | 14.6 / 55.4 GiB | A CPU cache is a small, extremely fast memory located close to… |
+| Qwen3.5-9B | vLLM 0.34.0, bf16 | 19.3 GB | 119 s | 275 s | 0.032 s | **88.1** | 2254 | 16.7 / 51.2 GiB | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | vLLM 0.34.0, bf16 | 23.9 GB | 156 s | 274 s | 0.023 s | **57.2** | 1502 | 22.8 / 47.2 GiB | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | vLLM 0.34.0, bf16 | 51.6 GB | 224 s | 337 s | 0.023 s | **138.1** | 3287 | 48.5 / 20.8 GiB | A CPU cache acts as a high-speed buffer between the fast processor… |
+| Qwen3.6-27B | vLLM 0.34.0, bf16 | 55.6 GB | 178 s | 268 s | 0.053 s | **29.0** | 716 | 50.1 / 17.5 GiB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | vLLM 0.34.0, bf16 | 55.6 GB | 173 s | 263 s | 0.053 s | **29.1** | 723 | 50.1 / 17.5 GiB | A CPU cache is a small, high-speed memory located on or near… |
+
+### modal-h100 (direct, no AirLLM)
+
+NVIDIA H100 80GB HBM3 (85.01 GB), sm_90 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | vLLM 0.34.0, int4/int2 QAT as shipped | 2.7 GB | 14 s | 349 s | 0.033 s | **254.6** | 6625 | 2.6 / 63.9 GiB | A CPU cache is a small, very fast memory located close to… |
+| gemma-4-E4B-it | vLLM 0.34.0, bf16 | 16.0 GB | 75 s | 229 s | 0.009 s | **175.6** | 5197 | 14.8 / 51.6 GiB | A CPU cache is a small, extremely fast memory located close to… |
+| Qwen3.5-9B | vLLM 0.34.0, bf16 | 19.3 GB | 119 s | 163 s | 0.020 s | **150.1** | 3807 | 16.7 / 50.0 GiB | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | vLLM 0.34.0, bf16 | 23.9 GB | 156 s | 243 s | 0.016 s | **93.1** | 2699 | 22.8 / 43.4 GiB | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | vLLM 0.34.0, bf16 | 51.6 GB | 224 s | 276 s | 0.014 s | **206.1** | 5146 | 48.5 / 16.4 GiB | A CPU cache acts as a high-speed buffer between the fast processor… |
+| Qwen3.6-27B | vLLM 0.34.0, bf16 | 55.6 GB | 178 s | 185 s | 0.037 s | **49.3** | 1291 | 50.1 / 18.7 GiB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | vLLM 0.34.0, bf16 | 55.6 GB | 173 s | 174 s | 0.030 s | **52.0** | 1343 | 50.1 / 18.7 GiB | A CPU cache is a small, high-speed memory located on or near… |
+
 ### zerogpu-rtxpro6000 (direct, no AirLLM)
 
 NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb (50.87 GB) / NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 4g.96gb (101.98 GB), sm_120 · Intel(R) Xeon(R) Platinum 8559C · torch 2.11.0 (CUDA 13.0) · transformers 5.23.0
 
 | Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
 |---|---|---|---|---|---|---|---|---|---|
-| gemma-4-E2B-it-qat-mobile-ct | transformers (eager), bf16 | 2.7 GB | – | – | – | – | – | – | **failed** in `load`: RuntimeError: You set `ignore_mismatched_sizes` to `False`, thus raising an error. (transformers 5.23 compress |
+| gemma-4-E2B-it-qat-mobile-ct | transformers (eager), int4/int2 QAT as shipped | 2.7 GB | – | – | – | – | – | – | **failed** in `load`: RuntimeError: You set `ignore_mismatched_sizes` to `False`, thus raising an error. (transformers 5.23 compress |
 | gemma-4-E4B-it | transformers (eager), bf16 | 16.0 GB | 18 s | 8 s | 0.047 s | **23.7** | – | 15.9 GB peak (no pre-allocated cache) | A CPU cache is a small, extremely fast memory located close to… |
 | Qwen3.5-9B | transformers (eager), bf16 | 19.3 GB | 22 s | 6 s | 0.065 s | **30.6** | – | 18.9 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory layer situated between the… |
 | gemma-4-12B-it | transformers (eager), bf16 | 23.9 GB | 23 s | 5 s | 0.062 s | **20.0** | – | 24.1 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory buffer located directly on… |

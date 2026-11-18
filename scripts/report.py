@@ -149,7 +149,9 @@ def load_direct(host_dir):
 
 def _engine_label(r):
     eng = {"vllm": f"vLLM {r.get('env', {}).get('vllm', '')}".strip(), "hf": "transformers (eager)"}[r["engine"]]
-    return f"{eng}, {r['weights']}"
+    # the QAT checkpoint ships int4/int2 weights (compressed-tensors) that are used as they are
+    w = "int4/int2 QAT as shipped" if "qat" in r["model"] else r["weights"]
+    return f"{eng}, {w}"
 
 
 def direct_table(rows):
@@ -180,8 +182,9 @@ def env_line_direct(rows):
     e = envs[0] if envs else {}
     gpus = " / ".join(dict.fromkeys(f"{x['gpu']} ({x['gpu_vram_gb']} GB)" for x in envs))
     eng = f"vllm {e['vllm']} · " if e.get("vllm") else ""
+    cpu = f"{e['cpu']} · " if e.get("cpu") not in (None, "", "unknown") else ""  # Modal's sandbox hides it
     return (f"{gpus or '?'}, sm_{str(e.get('gpu_cc', '?')).replace('.', '')} · "
-            f"{e.get('cpu', '?')} · {eng}torch {e.get('torch')} (CUDA {e.get('cuda_runtime')}) · transformers {e.get('transformers')}")
+            f"{cpu}{eng}torch {e.get('torch')} (CUDA {e.get('cuda_runtime')}) · transformers {e.get('transformers')}")
 
 
 AIRLLM_HOSTS = ("local-gtx1070", "local-rtx2070", "kaggle-t4")  # model streamed: does not fit

@@ -1,0 +1,112 @@
+{
+  "model": "gemma-4-E2B-it-qat-mobile-ct",
+  "repo_id": "google/gemma-4-E2B-it-qat-mobile-ct",
+  "engine": "vllm",
+  "weights": "bf16",
+  "status": "ok",
+  "started": "2026-11-18T14:26:08",
+  "prompt": "Explain how a CPU cache works in one short paragraph.",
+  "phases": {
+    "download_s": 14,
+    "checkpoint_gb": 2.672,
+    "load_s": 348.89,
+    "load_mem": {
+      "peak_rss_gb": 9.841,
+      "peak_gpu_device_used_gb": 73.917,
+      "peak_gpu_process_gb": 0.0,
+      "other_gpu_pids_seen": [
+        1
+      ]
+    },
+    "container_s": 378.9,
+    "gpu_usd_est": 0.416,
+    "download_where": "Hugging Face -> Modal Volume, separate CPU container (GPU containers read the Volume)"
+  },
+  "runs": {
+    "single": {
+      "prompt_tokens": 20,
+      "new_tokens": 256,
+      "ttft_s": 0.0329,
+      "ttft_samples_s": [
+        0.0329,
+        0.0339,
+        0.0327
+      ],
+      "total_s": 1.0346,
+      "total_samples_s": [
+        1.0334,
+        1.0346,
+        1.0404
+      ],
+      "decode_tok_per_s": 254.57,
+      "end_to_end_tok_per_s": 247.43,
+      "text": "A CPU cache is a small, very fast memory located close to the CPU, designed to store frequently accessed data and instructions. When the CPU needs data, it",
+      "peak_rss_gb": 9.817,
+      "peak_gpu_device_used_gb": 73.919,
+      "peak_gpu_process_gb": 0.0,
+      "other_gpu_pids_seen": [
+        1
+      ]
+    },
+    "batch": {
+      "batch": 32,
+      "tokens_each": 256,
+      "total_s": 1.236,
+      "output_tokens": 8192,
+      "output_tok_per_s": 6625.3,
+      "peak_rss_gb": 9.818,
+      "peak_gpu_device_used_gb": 73.921,
+      "peak_gpu_process_gb": 0.0,
+      "other_gpu_pids_seen": [
+        1
+      ]
+    }
+  },
+  "env": {
+    "hostname_tag": "modal-h100",
+    "platform": "Linux-4.19.0-gvisor-x86_64-with-glibc2.35",
+    "python": "3.12.15",
+    "cpu": "unknown",
+    "cpu_count": 24,
+    "ram_total_gb": 1099.5,
+    "torch": "2.14.0",
+    "transformers": "5.22.2",
+    "vllm": "0.34.0",
+    "compressed_tensors": "0.17.0",
+    "flashinfer_python": "0.7.3",
+    "gpu": "NVIDIA H100 80GB HBM3",
+    "gpu_vram_gb": 85.01,
+    "gpu_cc": "9.0",
+    "gpu_count": 1,
+    "cuda_runtime": "13.0",
+    "bf16_native": true,
+    "modal_gpu": "H100!",
+    "driver": "610.57.04"
+  },
+  "chat_template": true,
+  "engine_args": {
+    "dtype": "auto",
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.9,
+    "enable_prefix_caching": false,
+    "seed": 0,
+    "limit_mm_per_prompt": {
+      "image": 0,
+      "audio": 0
+    }
+  },
+  "engine_info": {
+    "weights_gib": 2.6,
+    "weights_load_s": 12.087414,
+    "kv_cache_gib": 63.85,
+    "kv_cache_tokens": 3580739,
+    "max_concurrency": 874.2,
+    "compile_s": 78.12,
+    "graph_capture_s": 27.0,
+    "attention_backend": "FLASH_ATTN",
+    "weights_read_s": 3.29,
+    "engine_init_s": 271.31
+  },
+  "engine_log_tail": [],
+  "finished": "2026-11-18T14:32:21"
+}

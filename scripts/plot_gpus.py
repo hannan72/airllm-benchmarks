@@ -28,9 +28,9 @@ SERIES = [
     ("local-rtx2070", "RTX 2070 8 GB · AirLLM tuned", "#2a78d6", "o"),
     ("kaggle-t4", "T4 16 GB · AirLLM tuned", "#eb6834", "s"),
     ("zerogpu-rtxpro6000", "ZeroGPU RTX PRO 6000 · transformers", "#1baf7a", "D"),
-    ("modal-a100-40", "A100 40 GB · vLLM", "#eda100", "^"),
+    ("modal-a100-40", "A100 40 GB · vLLM (fp8 for 26–27B)", "#eda100", "^"),
     ("modal-a100-80", "A100 80 GB · vLLM", "#e87ba4", "v"),
-    ("modal-h100", "H100 80 GB · vLLM", "#008300", "P"),
+    ("modal-h100", "H100 80 GB · vLLM", "#008300", "h"),
     ("local-gtx1070", "GTX 1070 8 GB · AirLLM tuned", "#6250d6", "X"),
 ]
 

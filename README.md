@@ -3,7 +3,7 @@
 Can [AirLLM](https://github.com/lyogavin/airllm) (v4.0.0, Sept 2026) run current open models on an
 **8 GB laptop GPU** (RTX 2070 Max-Q) and on a **free Kaggle T4**, and how fast? And how does that
 compare with simply deploying the same models on a GPU big enough to hold them
-([free Hugging Face ZeroGPU](#bigger-gpus-deploy-directly); A100 / H100 with vLLM pending)?
+([free Hugging Face ZeroGPU, and A100 / H100 with vLLM](#bigger-gpus-deploy-directly))?
 
 Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qwen3.5-9B`,
 `google/gemma-4-12B-it`, `google/gemma-4-26B-A4B-it`, `Qwen/Qwen3.6-27B`, `Qwen/Qwen3.8-27B`.
@@ -23,10 +23,12 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
 * Even tuned, AirLLM streams the **whole model (≈ 15 GB for a 4-bit 27B) for every token**, so it
   is a way to *run* a model that does not fit in VRAM, not a way to chat with it interactively.
   The MoE model (26B-A4B) gets no benefit from sparsity: all 128 experts are streamed per layer.
-* **On a GPU that holds the model, deploy it directly.** On a free Hugging Face ZeroGPU slice
-  (RTX PRO 6000 Blackwell, 48 / 96 GB) plain transformers decodes the same models at **16–31 tok/s**,
-  15–200× faster than tuned AirLLM on the 8–16 GB GPUs, with 0.05–0.11 s to the first token.
-  vLLM on A100 / H100 is prepared but not run yet ([Bigger GPUs](#bigger-gpus-deploy-directly)).
+* **On a GPU that holds the model, deploy it directly.** With vLLM on an **H100** the same models
+  decode at **49–255 tok/s** for one request, 110–540× the best tuned AirLLM number, and at
+  1,300–6,600 tok/s across 32 concurrent requests. An **A100** does 29–238 tok/s (80 GB, bf16) or
+  39–227 tok/s (40 GB, fp8 for the 26–27B models). Plain transformers on a free Hugging Face ZeroGPU
+  slice (RTX PRO 6000 Blackwell) manages 16–31 tok/s. The A100 / H100 runs used $9.40 of Modal's
+  free monthly credit ([Bigger GPUs](#bigger-gpus-deploy-directly)).
 
 ![decode speed](results/speed.png)
 
@@ -109,44 +111,76 @@ whole model on one big GPU:
   card (`xlarge`, 2× quota). ZeroGPU runs PyTorch inside a Gradio Space and cannot host vLLM, so
   this is plain transformers 5.23 `generate()` in bf16: eager, dynamic KV cache, flash-linear-attention
   kernels for Qwen's Gated DeltaNet layers.
-* **A100 / H100 with vLLM 0.34 on Modal** (`bench/modal_direct.py`, free Starter plan credits):
-  H100 80 GB, A100 80 GB and A100 40 GB; bf16, or on-the-fly fp8 where bf16 does not fit (26–27B on
-  the 40 GB A100). Prepared, not run yet. (Lightning AI was the first plan, but it is not taking new
-  sign-ups.)
+* **A100 / H100 with vLLM 0.34 on [Modal](https://modal.com)** (`bench/modal_direct.py`, free
+  Starter plan credits): H100 SXM 80 GB, A100 SXM 80 GB and A100 SXM 40 GB, one fresh container per
+  model and GPU. bf16, or vLLM's on-the-fly fp8 where bf16 does not fit (26–27B on the 40 GB A100).
+  (Lightning AI was the first plan, but it is not taking new sign-ups.)
 
 ![decode speed by GPU](results/gpus.png)
 
-Single-stream decode speed, tokens/s (small GPUs: AirLLM tuned, warm; big GPUs: whole model on the
-GPU, median of 2 runs of 64 tokens):
+Single-stream decode speed, tokens/s (small GPUs: AirLLM tuned, warm; ZeroGPU: median of 2 runs of
+64 tokens; A100 / H100: median of 3 runs of 256 tokens). Gemma-4-E2B-qat runs its shipped int4/int2
+weights everywhere:
 
 <!-- gpus:start -->
-| Model | RTX 2070 8 GB<br>AirLLM tuned | T4 16 GB<br>AirLLM tuned | ZeroGPU RTX PRO 6000<br>transformers bf16 |
-|---|---|---|---|
-| gemma-4-E2B-it-qat-mobile-ct | 0.90 | 0.78 | fails to load |
-| gemma-4-E4B-it | 1.55 | 0.97 | 23.7 |
-| Qwen3.5-9B | 1.05 | 0.59 | 30.6 |
-| gemma-4-12B-it | 0.85 | 0.47 | 20.0 |
-| gemma-4-26B-A4B-it | 0.38 | 0.20 | 19.6 |
-| Qwen3.6-27B | 0.08 | 0.20 | 16.5 |
-| Qwen3.8-27B | 0.08 | 0.21 | 16.6 |
+| Model | RTX 2070 8 GB<br>AirLLM tuned | T4 16 GB<br>AirLLM tuned | ZeroGPU RTX PRO 6000<br>transformers bf16 | A100 40 GB<br>vLLM | A100 80 GB<br>vLLM bf16 | H100 80 GB<br>vLLM bf16 |
+|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | 0.90 | 0.78 | fails to load | 226.7 | 237.9 | 254.6 |
+| gemma-4-E4B-it | 1.55 | 0.97 | 23.7 | 98.8 | 116.5 | 175.6 |
+| Qwen3.5-9B | 1.05 | 0.59 | 30.6 | 73.3 | 88.1 | 150.1 |
+| gemma-4-12B-it | 0.85 | 0.47 | 20.0 | 48.2 | 57.2 | 93.1 |
+| gemma-4-26B-A4B-it | 0.38 | 0.20 | 19.6 | 143.7 (fp8) | 138.1 | 206.1 |
+| Qwen3.6-27B | 0.08 | 0.20 | 16.5 | 38.6 (fp8) | 29.0 | 49.3 |
+| Qwen3.8-27B | 0.08 | 0.21 | 16.6 | 38.6 (fp8) | 29.1 | 52.0 |
 <!-- gpus:end -->
 
-* **Direct deployment is 15–200× faster than tuned AirLLM.** Qwen3.6-27B decodes at 16.5 tok/s on
-  ZeroGPU vs 0.20 on the T4 and 0.08 on the laptop; Gemma-4-E4B at 23.7 vs 1.55 tok/s. The first
-  token comes after 0.05–0.11 s instead of seconds.
+* **Direct deployment is 15–540× faster than tuned AirLLM.** On the H100 Qwen3.6-27B decodes at
+  49.3 tok/s vs 0.20 on the T4 and 0.08 on the laptop; Gemma-4-E4B at 175.6 vs 1.55 tok/s. Even plain
+  transformers on ZeroGPU is 15–200× faster. The first token comes after 9–58 ms (vLLM) or
+  50–110 ms (transformers) instead of seconds.
+* **With vLLM, decode speed follows memory bandwidth.** Each token reads every active weight once,
+  so tok/s × weight bytes ≈ bandwidth used: the bf16 27B reads ≈ 2.65 TB/s on the H100 (79 % of its
+  3.35 TB/s) and ≈ 1.56 TB/s on the A100 80 GB (77 % of 2.04 TB/s). Moving from the A100 80 GB to the
+  H100 speeds the 12B and 27B models up 1.6–1.8×, close to the 1.64× bandwidth ratio.
+* **The MoE model finally pays off.** Gemma-4-26B-A4B activates ≈ 4B parameters per token. With vLLM
+  it decodes at 206 tok/s on the H100, 2.2× the dense 12B and 4× the dense 27B. With plain
+  transformers it was no faster than the 12B (19.6 vs 20.0 tok/s), because per-layer overhead dominated.
+* **fp8 makes the 26–27B models fit a 40 GB A100, and one request even gets faster.** vLLM quantizes
+  the bf16 weights to fp8 while loading. The A100 has no fp8 hardware, so this is weight-only fp8
+  through Marlin kernels. Each token reads half the bytes, so one request decodes faster than bf16 on
+  the 80 GB A100 (Qwen 27B 38.6 vs 29.0 tok/s, Gemma-4-26B-A4B 144 vs 138). 32 concurrent requests
+  lose instead: Qwen 27B gets 361 vs 716 tok/s, probably because the fp8 weights are unpacked to
+  bf16 for every batched matrix multiply. The first words of every fp8 output match bf16.
+* **Batching is where a big GPU pays off.** 32 concurrent requests deliver 24–30× the single-request
+  rate (H100: 6,625 tok/s for Gemma-4-E2B-qat, 1,291–1,343 for the 27B models). The fp8 runs on the
+  40 GB A100 are the exceptions: 20× for Gemma-4-26B-A4B, 9× for the Qwen 27B models.
+* **vLLM start-up takes 3–6 minutes** from process start to the first request (163–349 s), mostly
+  torch.compile, CUDA-graph capture and memory profiling (118–271 s). Reading the weights from the
+  Modal Volume takes 2–54 s. That is a one-off per deployment, but it rules out loading models on demand.
+* **Gemma-4-E2B-qat runs in vLLM.** Its shipped int4/int2 compressed-tensors weights run through
+  vLLM's mixed-precision kernels at 227–255 tok/s, the fastest model here. transformers 5.23 cannot
+  load it (below).
 * **Plain transformers is overhead-bound, not bandwidth-bound, below ≈ 30B.** Decode speed barely
   depends on size: 23.7 tok/s for the 16 GB E4B, 20.0 for the 24 GB 12B, 16.5 for a 55.6 GB 27B.
   The 27B reads its weights at ≈ 0.9 TB/s (55.6 GB × 16.5 tok/s, about half the card's bandwidth);
   the small models spend their ≈ 40–50 ms per token on per-layer kernel launches and Python. The MoE
   26B-A4B (19.6 tok/s) is therefore no faster than the dense 12B despite only 4B active parameters.
-  An engine with CUDA graphs (vLLM) removes most of that overhead.
+  An engine with CUDA graphs (vLLM, above) removes most of that overhead.
 * **ZeroGPU practicalities.** A free account gets 5 GPU-minutes a day and can host two ZeroGPU Spaces
   (account older than 30 days). This sweep used ≈ 3.8 minutes: the 26–27B runs count double, and each
   Qwen run's first GPU call included ≈ 25 s of Triton compilation for the DeltaNet kernels. ZeroGPU
   only intercepts CUDA placement done while the app module is imported, so the Space loads one model
   per (re)start, chosen with the `BENCH_MODEL` Space variable. Gemma-4-E2B-it-qat-mobile-ct does not
   load in transformers 5.23: its scalar activation scales do not match the `[1]`-shaped module
-  parameters; only the AirLLM path here (which re-adds them) runs it.
+  parameters; only the AirLLM path here (which re-adds them) and vLLM run it.
+* **Modal practicalities.** The free Starter plan includes $30 of compute a month, but GPU functions
+  need a card on the account. The whole sweep metered $9.40, including failed attempts and one
+  run stopped midway, and was all covered by the credits: about $2.00 (H100), $1.60 (A100 80 GB) and
+  $1.40 (A100 40 GB) of GPU time for the final runs, about $0.17–0.42 per model. CPU containers copied
+  the ≈ 225 GB of checkpoints into a Modal Volume in under 4 minutes. Requests for an `A100-40GB` sometimes
+  landed on an 80 GB card, and Modal has no way to pin it, so the runner checks the GPU and retries.
+  On the H100, Qwen3.6/3.8-27B needed `--max-num-seqs 64`. vLLM 0.34's default of 1,024 concurrent
+  sequences needs one Gated DeltaNet state block per sequence, and only 325 fit next to the bf16 weights.
 
 ## How AirLLM works (and why it is slow)
 
@@ -188,6 +222,12 @@ files) and dequantizes on the GPU at load time.
   tokens (`min_new_tokens` / `ignore_eos`), median of 2–3 runs. vLLM also runs 32 concurrent requests
   of 256 tokens for aggregate throughput. Download and start-up (load, compile, CUDA graphs) are timed
   separately. The ZeroGPU Space (`spaces/zerogpu/app.py`) wraps the same functions.
+* `bench/modal_direct.py` runs `run_direct.py` on Modal. CPU containers first copy the checkpoints
+  into a Modal Volume. Then each (GPU, model) pair runs in its own fresh container on a dedicated GPU,
+  with all models of a GPU type in parallel. Weights are bf16 when the checkpoint takes at most 75 % of
+  VRAM, otherwise vLLM's on-the-fly fp8 (`--fp8-checkpoints` uses pre-quantized FP8 checkpoints
+  instead). Settings: vLLM 0.34.0, torch 2.14 (CUDA 13.0), `max_model_len` 4096,
+  `gpu_memory_utilization` 0.9, prefix caching off, multimodal inputs disabled.
 * Text-only: vision / audio towers are not loaded for any model. Qwen's stock class would keep its
   vision tower resident on the GPU; `--stock` runs it unmodified.
 
@@ -317,13 +357,55 @@ I/O breakdown (cold run):
 | Qwen3.8-27B | bf16 | 53.79 | 30.68 s | 1.75 | 8.40 s | on |
 | Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
 
+#### modal-a100-40 (direct, no AirLLM)
+
+NVIDIA A100-SXM4-40GB (42.43 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | vLLM 0.34.0, int4/int2 QAT as shipped | 2.7 GB | 14 s | 313 s | 0.018 s | **226.7** | 5471 | 2.5 / 31.7 GiB | A CPU cache is a small, very fast memory located close to… |
+| gemma-4-E4B-it | vLLM 0.34.0, bf16 | 16.0 GB | 75 s | 290 s | 0.033 s | **98.8** | 2796 | 14.6 / 19.7 GiB | A CPU cache is a small, extremely fast memory located close to… |
+| Qwen3.5-9B | vLLM 0.34.0, bf16 | 19.3 GB | 119 s | 252 s | 0.031 s | **73.3** | 1904 | 16.7 / 15.5 GiB | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | vLLM 0.34.0, bf16 | 23.9 GB | 156 s | 272 s | 0.027 s | **48.2** | 1285 | 22.8 / 11.4 GiB | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | vLLM 0.34.0, fp8 | 51.6 GB | 224 s | 324 s | 0.020 s | **143.7** | 2949 | 25.8 / 7.7 GiB | A CPU cache acts as a high-speed buffer between the fast processor… |
+| Qwen3.6-27B | vLLM 0.34.0, fp8 | 55.6 GB | 178 s | 292 s | 0.058 s | **38.6** | 361 | 27.5 / 4.5 GiB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | vLLM 0.34.0, fp8 | 55.6 GB | 173 s | 287 s | 0.058 s | **38.6** | 360 | 28.1 / 4.0 GiB | A CPU cache is a small, high-speed memory located on or near… |
+
+#### modal-a100-80 (direct, no AirLLM)
+
+NVIDIA A100-SXM4-80GB (85.12 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | vLLM 0.34.0, int4/int2 QAT as shipped | 2.7 GB | 14 s | 310 s | 0.020 s | **237.9** | 5616 | 2.5 / 67.5 GiB | A CPU cache is a small, very fast memory located close to… |
+| gemma-4-E4B-it | vLLM 0.34.0, bf16 | 16.0 GB | 75 s | 295 s | 0.018 s | **116.5** | 3276 | 14.6 / 55.4 GiB | A CPU cache is a small, extremely fast memory located close to… |
+| Qwen3.5-9B | vLLM 0.34.0, bf16 | 19.3 GB | 119 s | 275 s | 0.032 s | **88.1** | 2254 | 16.7 / 51.2 GiB | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | vLLM 0.34.0, bf16 | 23.9 GB | 156 s | 274 s | 0.023 s | **57.2** | 1502 | 22.8 / 47.2 GiB | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | vLLM 0.34.0, bf16 | 51.6 GB | 224 s | 337 s | 0.023 s | **138.1** | 3287 | 48.5 / 20.8 GiB | A CPU cache acts as a high-speed buffer between the fast processor… |
+| Qwen3.6-27B | vLLM 0.34.0, bf16 | 55.6 GB | 178 s | 268 s | 0.053 s | **29.0** | 716 | 50.1 / 17.5 GiB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | vLLM 0.34.0, bf16 | 55.6 GB | 173 s | 263 s | 0.053 s | **29.1** | 723 | 50.1 / 17.5 GiB | A CPU cache is a small, high-speed memory located on or near… |
+
+#### modal-h100 (direct, no AirLLM)
+
+NVIDIA H100 80GB HBM3 (85.01 GB), sm_90 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | vLLM 0.34.0, int4/int2 QAT as shipped | 2.7 GB | 14 s | 349 s | 0.033 s | **254.6** | 6625 | 2.6 / 63.9 GiB | A CPU cache is a small, very fast memory located close to… |
+| gemma-4-E4B-it | vLLM 0.34.0, bf16 | 16.0 GB | 75 s | 229 s | 0.009 s | **175.6** | 5197 | 14.8 / 51.6 GiB | A CPU cache is a small, extremely fast memory located close to… |
+| Qwen3.5-9B | vLLM 0.34.0, bf16 | 19.3 GB | 119 s | 163 s | 0.020 s | **150.1** | 3807 | 16.7 / 50.0 GiB | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | vLLM 0.34.0, bf16 | 23.9 GB | 156 s | 243 s | 0.016 s | **93.1** | 2699 | 22.8 / 43.4 GiB | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | vLLM 0.34.0, bf16 | 51.6 GB | 224 s | 276 s | 0.014 s | **206.1** | 5146 | 48.5 / 16.4 GiB | A CPU cache acts as a high-speed buffer between the fast processor… |
+| Qwen3.6-27B | vLLM 0.34.0, bf16 | 55.6 GB | 178 s | 185 s | 0.037 s | **49.3** | 1291 | 50.1 / 18.7 GiB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | vLLM 0.34.0, bf16 | 55.6 GB | 173 s | 174 s | 0.030 s | **52.0** | 1343 | 50.1 / 18.7 GiB | A CPU cache is a small, high-speed memory located on or near… |
+
 #### zerogpu-rtxpro6000 (direct, no AirLLM)
 
 NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb (50.87 GB) / NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 4g.96gb (101.98 GB), sm_120 · Intel(R) Xeon(R) Platinum 8559C · torch 2.11.0 (CUDA 13.0) · transformers 5.23.0
 
 | Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
 |---|---|---|---|---|---|---|---|---|---|
-| gemma-4-E2B-it-qat-mobile-ct | transformers (eager), bf16 | 2.7 GB | – | – | – | – | – | – | **failed** in `load`: RuntimeError: You set `ignore_mismatched_sizes` to `False`, thus raising an error. (transformers 5.23 compress |
+| gemma-4-E2B-it-qat-mobile-ct | transformers (eager), int4/int2 QAT as shipped | 2.7 GB | – | – | – | – | – | – | **failed** in `load`: RuntimeError: You set `ignore_mismatched_sizes` to `False`, thus raising an error. (transformers 5.23 compress |
 | gemma-4-E4B-it | transformers (eager), bf16 | 16.0 GB | 18 s | 8 s | 0.047 s | **23.7** | – | 15.9 GB peak (no pre-allocated cache) | A CPU cache is a small, extremely fast memory located close to… |
 | Qwen3.5-9B | transformers (eager), bf16 | 19.3 GB | 22 s | 6 s | 0.065 s | **30.6** | – | 18.9 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory layer situated between the… |
 | gemma-4-12B-it | transformers (eager), bf16 | 23.9 GB | 23 s | 5 s | 0.062 s | **20.0** | – | 24.1 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory buffer located directly on… |
@@ -347,6 +429,8 @@ Big GPUs (no AirLLM):
 ```bash
 python bench/run_direct.py --model Qwen3.6-27B --engine vllm            # one model, vLLM
 modal setup && modal run bench/modal_direct.py --gpus h100,a100-80,a100-40   # Modal: all models, vLLM
+modal run bench/modal_direct.py --gpus h100,a100-40 --models Qwen3.6-27B,Qwen3.8-27B --max-num-seqs 64
+modal volume delete airllm-bench-hf                 # drop the checkpoint copies afterwards
 python bench/run_direct_matrix.py --out-dir results/my-gpu --cleanup   # any CUDA box: all, bf16 or fp8 to fit
 python scripts/make_direct_notebook.py          # notebooks/direct_vllm.ipynb: the same for a Jupyter GPU host
 python scripts/make_zerogpu_space.py            # build/zerogpu-space/: upload to a ZeroGPU Gradio Space
@@ -377,6 +461,11 @@ repo is private. Results are printed at the end of the log and saved in the note
 * The big-GPU comparison mixes engines on purpose: each number is what you get from the simplest
   reasonable deployment on that hardware. ZeroGPU is a MIG slice of shared hardware; its numbers are
   medians of 2 runs.
+* Each A100 / H100 number comes from one container on Modal's cloud (median of 3 repeats inside it);
+  another container may differ by a few percent. "Download" is the separate Hugging Face → Volume
+  copy. "Start-up" includes reading the weights from the Volume.
+* `max_num_seqs` was 64 for the Qwen 27B models on the H100 and the 40 GB A100, and vLLM's default
+  1,024 everywhere else. Neither the 1- nor the 32-request run comes near either limit.
 * Kaggle run 1 lost the three > 25B models to the scratch-disk issue. Run 2 re-ran Qwen3.6/3.8-27B
   with AirLLM's own shard streaming and Gemma-4-26B-A4B with the lazy splitter. Stock bf16 for the
   > 25B models was not run on Kaggle, which has no disk room for 50+ GB of bf16 layer files.
