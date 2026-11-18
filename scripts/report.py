@@ -174,9 +174,11 @@ def direct_table(rows):
 
 
 def env_line_direct(rows):
-    e = next((r["env"] for r in rows if r.get("env", {}).get("gpu")), {})
+    envs = [r["env"] for r in rows if r.get("env", {}).get("gpu_vram_gb")]
+    e = envs[0] if envs else {}
+    gpus = " / ".join(dict.fromkeys(f"{x['gpu']} ({x['gpu_vram_gb']} GB)" for x in envs))
     eng = f"vllm {e['vllm']} · " if e.get("vllm") else ""
-    return (f"{e.get('gpu', '?')} ({e.get('gpu_vram_gb', '?')} GB, sm_{str(e.get('gpu_cc', '?')).replace('.', '')}) · "
+    return (f"{gpus or '?'}, sm_{str(e.get('gpu_cc', '?')).replace('.', '')} · "
             f"{e.get('cpu', '?')} · {eng}torch {e.get('torch')} (CUDA {e.get('cuda_runtime')}) · transformers {e.get('transformers')}")
 
 

@@ -1,0 +1,24 @@
+{
+  "model": "gemma-4-E2B-it-qat-mobile-ct",
+  "repo_id": "google/gemma-4-E2B-it-qat-mobile-ct",
+  "engine": "hf",
+  "weights": "bf16",
+  "phases": {
+    "checkpoint_gb": 2.67
+  },
+  "runs": {},
+  "status": "error",
+  "error_phase": "load",
+  "error": "RuntimeError: You set `ignore_mismatched_sizes` to `False`, thus raising an error. (transformers 5.23 compressed-tensors loader: scalar activation scales vs [1]-shaped params, packed weights unexpected, embed_scale missing; reproduced locally)",
+  "started": "2026-11-18T12:19:57",
+  "finished": "2026-11-18T12:20:10",
+  "env": {
+    "hostname_tag": "zerogpu",
+    "torch": "2.11.0",
+    "transformers": "5.23.0",
+    "compressed_tensors": "0.20.1",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb",
+    "zerogpu_size": "large"
+  },
+  "source": "HF ZeroGPU Space Hannan/airllm-bench-zerogpu (private), transcribed from the container log"
+}

@@ -1,7 +1,9 @@
 # AirLLM benchmarks: Gemma 4 and Qwen 3.x on small GPUs
 
 Can [AirLLM](https://github.com/lyogavin/airllm) (v4.0.0, Sept 2026) run current open models on an
-**8 GB laptop GPU** (RTX 2070 Max-Q) and on a **free Kaggle T4**, and how fast?
+**8 GB laptop GPU** (RTX 2070 Max-Q) and on a **free Kaggle T4**, and how fast? And how does that
+compare with simply deploying the same models on a GPU big enough to hold them
+([free Hugging Face ZeroGPU](#bigger-gpus-deploy-directly); A100 / H100 with vLLM pending)?
 
 Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qwen3.5-9B`,
 `google/gemma-4-12B-it`, `google/gemma-4-26B-A4B-it`, `Qwen/Qwen3.6-27B`, `Qwen/Qwen3.8-27B`.
@@ -21,6 +23,10 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
 * Even tuned, AirLLM streams the **whole model (≈ 15 GB for a 4-bit 27B) for every token**, so it
   is a way to *run* a model that does not fit in VRAM, not a way to chat with it interactively.
   The MoE model (26B-A4B) gets no benefit from sparsity: all 128 experts are streamed per layer.
+* **On a GPU that holds the model, deploy it directly.** On a free Hugging Face ZeroGPU slice
+  (RTX PRO 6000 Blackwell, 48 / 96 GB) plain transformers decodes the same models at **16–31 tok/s**,
+  15–200× faster than tuned AirLLM on the 8–16 GB GPUs, with 0.05–0.11 s to the first token.
+  vLLM on A100 / H100 is prepared but not run yet ([Bigger GPUs](#bigger-gpus-deploy-directly)).
 
 ![decode speed](results/speed.png)
 
@@ -88,8 +94,58 @@ whose output is correct (bf16 for Gemma 4, AirLLM 4-bit for Qwen). Full tables: 
 
 **Perspective.** E2B/E4B/9B/12B fit entirely in 8 GB of VRAM at 4-bit, so a normal runtime (e.g.
 transformers + bitsandbytes or llama.cpp) would run them one to two orders of magnitude faster than
-any AirLLM configuration here. That is a reasoned expectation, not something we measured. AirLLM is
+any AirLLM configuration here. That is a reasoned expectation, not something we measured on the 8 GB
+GPU; the big-GPU runs below show the size of the gap when the whole model fits. AirLLM is
 worth it for the models that do *not* fit: the 26–27B models ran with ≈ 4 GB of VRAM.
+
+## Bigger GPUs: deploy directly
+
+When the model fits in VRAM there is nothing to stream, so AirLLM is the wrong tool. To put the
+small-GPU numbers in perspective, the same models, prompt and greedy decoding were run with the
+whole model on one big GPU:
+
+* **Hugging Face ZeroGPU** (free account, private Space built from `spaces/zerogpu/`): an NVIDIA
+  RTX PRO 6000 Blackwell, as a 48 GB MIG half (`large`) or, for the 26–27B models, the full 96 GB
+  card (`xlarge`, 2× quota). ZeroGPU runs PyTorch inside a Gradio Space and cannot host vLLM, so
+  this is plain transformers 5.23 `generate()` in bf16: eager, dynamic KV cache, flash-linear-attention
+  kernels for Qwen's Gated DeltaNet layers.
+* **A100 / H100 with vLLM 0.34** (`bench/run_direct.py --engine vllm`, `notebooks/direct_vllm.ipynb`
+  for a Lightning AI Studio): bf16, or on-the-fly fp8 where bf16 does not fit (26–27B on a 40 GB A100).
+  Prepared, not run yet.
+
+![decode speed by GPU](results/gpus.png)
+
+Single-stream decode speed, tokens/s (small GPUs: AirLLM tuned, warm; big GPUs: whole model on the
+GPU, median of 2 runs of 64 tokens):
+
+<!-- gpus:start -->
+| Model | RTX 2070 8 GB<br>AirLLM tuned | T4 16 GB<br>AirLLM tuned | ZeroGPU RTX PRO 6000<br>transformers bf16 |
+|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | 0.90 | 0.78 | fails to load |
+| gemma-4-E4B-it | 1.55 | 0.97 | 23.7 |
+| Qwen3.5-9B | 1.05 | 0.59 | 30.6 |
+| gemma-4-12B-it | 0.85 | 0.47 | 20.0 |
+| gemma-4-26B-A4B-it | 0.38 | 0.20 | 19.6 |
+| Qwen3.6-27B | 0.08 | 0.20 | 16.5 |
+| Qwen3.8-27B | 0.08 | 0.21 | 16.6 |
+<!-- gpus:end -->
+
+* **Direct deployment is 15–200× faster than tuned AirLLM.** Qwen3.6-27B decodes at 16.5 tok/s on
+  ZeroGPU vs 0.20 on the T4 and 0.08 on the laptop; Gemma-4-E4B at 23.7 vs 1.55 tok/s. The first
+  token comes after 0.05–0.11 s instead of seconds.
+* **Plain transformers is overhead-bound, not bandwidth-bound, below ≈ 30B.** Decode speed barely
+  depends on size: 23.7 tok/s for the 16 GB E4B, 20.0 for the 24 GB 12B, 16.5 for a 55.6 GB 27B.
+  The 27B reads its weights at ≈ 0.9 TB/s (55.6 GB × 16.5 tok/s, about half the card's bandwidth);
+  the small models spend their ≈ 40–50 ms per token on per-layer kernel launches and Python. The MoE
+  26B-A4B (19.6 tok/s) is therefore no faster than the dense 12B despite only 4B active parameters.
+  An engine with CUDA graphs (vLLM) removes most of that overhead.
+* **ZeroGPU practicalities.** A free account gets 5 GPU-minutes a day and can host two ZeroGPU Spaces
+  (account older than 30 days). This sweep used ≈ 3.8 minutes: the 26–27B runs count double, and each
+  Qwen run's first GPU call included ≈ 25 s of Triton compilation for the DeltaNet kernels. ZeroGPU
+  only intercepts CUDA placement done while the app module is imported, so the Space loads one model
+  per (re)start, chosen with the `BENCH_MODEL` Space variable. Gemma-4-E2B-it-qat-mobile-ct does not
+  load in transformers 5.23: its scalar activation scales do not match the `[1]`-shaped module
+  parameters; only the AirLLM path here (which re-adds them) runs it.
 
 ## How AirLLM works (and why it is slow)
 
@@ -126,6 +182,11 @@ files) and dequantizes on the GPU at load time.
   ≥ 2-D tensors only; `:nogc` = AirLLM's per-layer `clean_memory()` disabled.
 * `bench/run_matrix.py` runs a plan sequentially. It waits for 5 minutes of GPU idleness on the shared
   workstation and deletes each model's files when done. The Kaggle runs use the notebooks in `kaggle/`.
+* `bench/run_direct.py` (big GPUs) loads the whole model on one GPU, warms up, then measures time to
+  first token (a 1-token generation) and decode tok/s over 64 (transformers) or 256 (vLLM) forced
+  tokens (`min_new_tokens` / `ignore_eos`), median of 2–3 runs. vLLM also runs 32 concurrent requests
+  of 256 tokens for aggregate throughput. Download and start-up (load, compile, CUDA graphs) are timed
+  separately. The ZeroGPU Space (`spaces/zerogpu/app.py`) wraps the same functions.
 * Text-only: vision / audio towers are not loaded for any model. Qwen's stock class would keep its
   vision tower resident on the GPU; `--stock` runs it unmodified.
 
@@ -255,6 +316,20 @@ I/O breakdown (cold run):
 | Qwen3.8-27B | bf16 | 53.79 | 30.68 s | 1.75 | 8.40 s | on |
 | Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
 
+#### zerogpu-rtxpro6000 (direct, no AirLLM)
+
+NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb (50.87 GB) / NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 4g.96gb (101.98 GB), sm_120 · Intel(R) Xeon(R) Platinum 8559C · torch 2.11.0 (CUDA 13.0) · transformers 5.23.0
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | transformers (eager), bf16 | 2.7 GB | – | – | – | – | – | – | **failed** in `load`: RuntimeError: You set `ignore_mismatched_sizes` to `False`, thus raising an error. (transformers 5.23 compress |
+| gemma-4-E4B-it | transformers (eager), bf16 | 16.0 GB | 18 s | 8 s | 0.047 s | **23.7** | – | 15.9 GB peak (no pre-allocated cache) | A CPU cache is a small, extremely fast memory located close to… |
+| Qwen3.5-9B | transformers (eager), bf16 | 19.3 GB | 22 s | 6 s | 0.065 s | **30.6** | – | 18.9 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | transformers (eager), bf16 | 23.9 GB | 23 s | 5 s | 0.062 s | **20.0** | – | 24.1 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | transformers (eager), bf16 | 51.6 GB | 42 s | 6 s | 0.111 s | **19.6** | – | 51.9 GB peak (no pre-allocated cache) | A CPU cache acts as a high-speed buffer between the fast processor… |
+| Qwen3.6-27B | transformers (eager), bf16 | 55.6 GB | 78 s | 7 s | 0.112 s | **16.5** | – | 54.9 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | transformers (eager), bf16 | 55.6 GB | 79 s | 7 s | 0.109 s | **16.6** | – | 54.9 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory located on or near… |
+
 <!-- results:end -->
 
 ## Reproduce
@@ -266,6 +341,16 @@ uv venv .venv --python 3.12 && uv pip install -p .venv/bin/python -r requirement
 .venv/bin/python scripts/report.py --readme && .venv/bin/python scripts/plot.py         # tables + chart
 ```
 
+Big GPUs (no AirLLM):
+
+```bash
+python bench/run_direct.py --model Qwen3.6-27B --engine vllm            # one model, vLLM
+python bench/run_direct_matrix.py --out-dir results/lightning-h100 --cleanup   # all, bf16 or fp8 to fit
+python scripts/make_direct_notebook.py          # notebooks/direct_vllm.ipynb for a Lightning AI Studio
+python scripts/make_zerogpu_space.py            # build/zerogpu-space/: upload to a ZeroGPU Gradio Space
+.venv/bin/python scripts/plot_gpus.py           # results/gpus.png
+```
+
 Kaggle: `python scripts/make_kaggle_notebook.py --plan kaggle2 --out kaggle/run.ipynb`, import it on
 Kaggle with "Save & Run All" + GPU T4 and Internet on. The notebook embeds the `bench/` files because the
 repo is private. Results are printed at the end of the log and saved in the notebook output.
@@ -275,7 +360,10 @@ repo is private. Results are printed at the end of the log and saved in the note
 * One prompt, greedy decoding, 16–32 new tokens: this measures throughput, not quality. "Correct"
   means coherent and on-topic, judged by reading the outputs (all are in the JSONs).
 * Kaggle results were transcribed from the notebook log / output viewer into `results/kaggle-t4/`;
-  per-token arrays are omitted there.
+  per-token arrays are omitted there. ZeroGPU results were transcribed from the Space's container log.
+* The big-GPU comparison mixes engines on purpose: each number is what you get from the simplest
+  reasonable deployment on that hardware. ZeroGPU is a MIG slice of shared hardware; its numbers are
+  medians of 2 runs.
 * Kaggle run 1 lost the three > 25B models to the scratch-disk issue. Run 2 re-ran Qwen3.6/3.8-27B
   with AirLLM's own shard streaming and Gemma-4-26B-A4B with the lazy splitter. Stock bf16 for the
   > 25B models was not run on Kaggle, which has no disk room for 50+ GB of bf16 layer files.

@@ -1,0 +1,58 @@
+{
+  "model": "Qwen3.5-9B",
+  "repo_id": "Qwen/Qwen3.5-9B",
+  "engine": "hf",
+  "weights": "bf16",
+  "phases": {
+    "download_s": 21.63,
+    "checkpoint_gb": 19.306,
+    "load_s": 5.88
+  },
+  "hf_class": "AutoModelForImageTextToText",
+  "started": "2026-11-18T12:33:13",
+  "runs": {
+    "single": {
+      "prompt_tokens": 24,
+      "new_tokens": 64,
+      "ttft_s": 0.0645,
+      "ttft_samples_s": [
+        0.0704,
+        0.0586
+      ],
+      "decode_tok_per_s": 30.63,
+      "decode_samples_tok_per_s": [
+        30.92,
+        30.33
+      ],
+      "total_s": 2.1223,
+      "torch_peak_allocated_gb": 18.894,
+      "text": "A CPU cache is a small, high-speed memory layer situated between the processor and the main RAM, designed to bridge the speed gap by storing frequently accessed data and",
+      "gpu_function_s": 30.05,
+      "gpu_call_wall_s": 32.27
+    }
+  },
+  "chat_template": true,
+  "env": {
+    "hostname_tag": "zerogpu",
+    "platform": "Linux-6.18.62-127.179.amzn2023.x86_64-x86_64-with-glibc2.41",
+    "python": "3.12.12",
+    "cpu": "Intel(R) Xeon(R) Platinum 8559C",
+    "cpu_count": 192,
+    "ram_total_gb": 2147.4,
+    "torch": "2.11.0",
+    "transformers": "5.23.0",
+    "compressed_tensors": "0.20.1",
+    "spaces": "0.52.1",
+    "gradio": "6.32.0",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb",
+    "gpu_vram_gb": 50.87,
+    "gpu_cc": "12.0",
+    "gpu_count": 1,
+    "cuda_runtime": "13.0",
+    "bf16_native": true,
+    "zerogpu_size": "large"
+  },
+  "status": "ok",
+  "finished": "2026-11-18T12:33:45",
+  "source": "HF ZeroGPU Space Hannan/airllm-bench-zerogpu (private), transcribed from the container log"
+}
