@@ -109,9 +109,10 @@ whole model on one big GPU:
   card (`xlarge`, 2× quota). ZeroGPU runs PyTorch inside a Gradio Space and cannot host vLLM, so
   this is plain transformers 5.23 `generate()` in bf16: eager, dynamic KV cache, flash-linear-attention
   kernels for Qwen's Gated DeltaNet layers.
-* **A100 / H100 with vLLM 0.34** (`bench/run_direct.py --engine vllm`, `notebooks/direct_vllm.ipynb`
-  for a Lightning AI Studio): bf16, or on-the-fly fp8 where bf16 does not fit (26–27B on a 40 GB A100).
-  Prepared, not run yet.
+* **A100 / H100 with vLLM 0.34 on Modal** (`bench/modal_direct.py`, free Starter plan credits):
+  H100 80 GB, A100 80 GB and A100 40 GB; bf16, or on-the-fly fp8 where bf16 does not fit (26–27B on
+  the 40 GB A100). Prepared, not run yet. (Lightning AI was the first plan, but it is not taking new
+  sign-ups.)
 
 ![decode speed by GPU](results/gpus.png)
 
@@ -345,11 +346,23 @@ Big GPUs (no AirLLM):
 
 ```bash
 python bench/run_direct.py --model Qwen3.6-27B --engine vllm            # one model, vLLM
-python bench/run_direct_matrix.py --out-dir results/lightning-h100 --cleanup   # all, bf16 or fp8 to fit
-python scripts/make_direct_notebook.py          # notebooks/direct_vllm.ipynb for a Lightning AI Studio
+modal setup && modal run bench/modal_direct.py --gpus h100,a100-80,a100-40   # Modal: all models, vLLM
+python bench/run_direct_matrix.py --out-dir results/my-gpu --cleanup   # any CUDA box: all, bf16 or fp8 to fit
+python scripts/make_direct_notebook.py          # notebooks/direct_vllm.ipynb: the same for a Jupyter GPU host
 python scripts/make_zerogpu_space.py            # build/zerogpu-space/: upload to a ZeroGPU Gradio Space
 .venv/bin/python scripts/plot_gpus.py           # results/gpus.png
 ```
+
+Windows PC with an 8 GB NVIDIA GPU (written for a GTX 1070; needs git, the NVIDIA driver and
+[uv](https://docs.astral.sh/uv/)): clone the repo, then in PowerShell
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows\run_pc.ps1 -Push   # add -HfHome D:\hf for another disk
+```
+
+It installs PyTorch 2.14.1 for CUDA 12.6 (the newest build with Pascal kernels), checks fp16 / bf16 /
+NF4 on the GPU, runs the tuned configs for every model (`--plan tuned8gb`, resumable) into
+`results/local-<gpu>/` and, with `-Push`, commits and pushes them.
 
 Kaggle: `python scripts/make_kaggle_notebook.py --plan kaggle2 --out kaggle/run.ipynb`, import it on
 Kaggle with "Save & Run All" + GPU T4 and Internet on. The notebook embeds the `bench/` files because the

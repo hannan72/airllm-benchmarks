@@ -91,8 +91,10 @@ def env_line(rows):
 
 GARBLED = {("gemma-4-E4B-it", "4bit"), ("gemma-4-12B-it", "4bit"), ("gemma-4-26B-A4B-it", "4bit")}
 HOST_LABEL = {"local-rtx2070": "RTX 2070 Max-Q (8 GB)", "kaggle-t4": "Kaggle T4 (16 GB)",
+              "local-gtx1070": "GTX 1070 (8 GB, Windows)",
               "zerogpu-rtxpro6000": "HF ZeroGPU RTX PRO 6000 (48 GB MIG half; 96 GB for 26B/27B)",
-              "lightning-a100": "Lightning AI A100 (40 GB)", "lightning-h100": "Lightning AI H100 (80 GB)"}
+              "modal-a100-40": "Modal A100 (40 GB)", "modal-a100-80": "Modal A100 (80 GB)",
+              "modal-h100": "Modal H100 SXM (80 GB)"}
 
 
 def _best(rows, model, tuned):
@@ -182,9 +184,12 @@ def env_line_direct(rows):
             f"{e.get('cpu', '?')} · {eng}torch {e.get('torch')} (CUDA {e.get('cuda_runtime')}) · transformers {e.get('transformers')}")
 
 
-GPU_COLS = [("local-rtx2070", "RTX 2070 8 GB<br>AirLLM tuned"), ("kaggle-t4", "T4 16 GB<br>AirLLM tuned"),
+AIRLLM_HOSTS = ("local-gtx1070", "local-rtx2070", "kaggle-t4")  # model streamed: does not fit
+GPU_COLS = [("local-gtx1070", "GTX 1070 8 GB<br>AirLLM tuned"),
+            ("local-rtx2070", "RTX 2070 8 GB<br>AirLLM tuned"), ("kaggle-t4", "T4 16 GB<br>AirLLM tuned"),
             ("zerogpu-rtxpro6000", "ZeroGPU RTX PRO 6000<br>transformers bf16"),
-            ("lightning-a100", "A100 40 GB<br>vLLM"), ("lightning-h100", "H100 80 GB<br>vLLM bf16")]
+            ("modal-a100-40", "A100 40 GB<br>vLLM"), ("modal-a100-80", "A100 80 GB<br>vLLM bf16"),
+            ("modal-h100", "H100 80 GB<br>vLLM bf16")]
 
 
 def gpu_compare(hosts):
@@ -196,7 +201,7 @@ def gpu_compare(hosts):
     for m in ORDER:
         cells = []
         for h, _ in cols:
-            if h in ("local-rtx2070", "kaggle-t4"):
+            if h in AIRLLM_HOSTS:
                 r = _best(load(by[h]), m, True)
                 cells.append(f"{r['runs']['warm']['decode_tok_per_s']:.2f}" if r else "–")
                 continue

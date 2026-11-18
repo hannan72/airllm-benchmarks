@@ -6,8 +6,8 @@
   --cleanup      delete each model's HF cache after its run (scratch disks are small)
   --budget-min   start no new model after this many minutes (paid GPU credits)
 
-Example (Lightning AI H100):
-  BENCH_HOST_TAG=lightning-h100 python bench/run_direct_matrix.py --out-dir results/lightning-h100 --cleanup
+Example (an H100 box):
+  BENCH_HOST_TAG=my-h100 python bench/run_direct_matrix.py --out-dir results/my-h100 --cleanup
 """
 
 from __future__ import annotations

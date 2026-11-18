@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """Build notebooks/direct_vllm.ipynb: the direct-deployment (vLLM, no AirLLM) matrix for a
-rented big GPU (Lightning AI Studio, or any Jupyter with a CUDA GPU and Internet).
+rented big GPU (any Jupyter host with a CUDA GPU and Internet; on Modal use bench/modal_direct.py).
 
 The repo is private, so the notebook embeds the bench modules with %%writefile cells. Upload it
-to the Studio, select an A100 / H100 machine and run all cells. The host tag is derived from
-the GPU name (lightning-h100, lightning-a100, ...), and the last cell prints every result JSON.
+to the host, select an A100 / H100 machine and run all cells. The host tag is derived from
+the GPU name (jupyter-h100, jupyter-a100, ...), and the last cell prints every result JSON.
 """
 
 import argparse
@@ -16,7 +16,7 @@ FILES = ["measure.py", "model_list.py", "run_direct.py", "run_direct_matrix.py"]
 ap = argparse.ArgumentParser()
 ap.add_argument("--out", default="notebooks/direct_vllm.ipynb")
 ap.add_argument("--vllm", default="0.34.0")
-ap.add_argument("--platform", default="lightning", help="host tag prefix")
+ap.add_argument("--platform", default="jupyter", help="host tag prefix")
 ap.add_argument("--budget-min", type=float, default=40, help="start no new model after this many minutes")
 ap.add_argument("--models", default="all")
 ARGS = ap.parse_args()

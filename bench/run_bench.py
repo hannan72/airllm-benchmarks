@@ -6,7 +6,8 @@ Phases (each timed separately):
   convert   - AirLLM's one-time split into per-layer shards (+ optional 4/8-bit compression)
   init      - build the empty model and load resident modules
   generate  - greedy generation, run twice:
-                cold: split files evicted from the OS page cache first (posix_fadvise)
+                cold: split files evicted from the OS page cache first (posix_fadvise on Linux;
+                      on Windows an unbuffered open, which purges a file's cached pages)
                 warm: immediately after, whatever the page cache kept
 Per-token timestamps come from a LogitsProcessor, so prefill (TTFT) and decode speed are
 measured separately. Layer I/O time and bytes are taken by wrapping AirLLM's loader.
@@ -91,12 +92,33 @@ def instrument(model, stats: IOStats):
     model.move_layer_to_device = move
 
 
+def _evict_windows(f: Path) -> bool:
+    """Windows has no fadvise. Opening a file without intermediate buffering makes NTFS flush and
+    purge its cached pages when no cached handle is open (no admin rights needed)."""
+    import ctypes
+    from ctypes import wintypes
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateFileW.restype = wintypes.HANDLE
+    k32.CreateFileW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.DWORD, wintypes.LPVOID,
+                                wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE]
+    generic_read, share_all, open_existing, no_buffering = 0x80000000, 0x7, 3, 0x20000000
+    h = k32.CreateFileW(str(f), generic_read, share_all, None, open_existing, no_buffering, None)
+    if h is None or h == wintypes.HANDLE(-1).value:
+        return False
+    k32.CloseHandle(h)
+    return True
+
+
 def evict_page_cache(path: Path) -> int:
-    """Drop clean cached pages of every file under ``path`` (no root needed)."""
+    """Drop clean cached pages of every file under ``path`` (no root / admin needed)."""
     n = 0
     for f in path.rglob("*"):
         if f.is_file():
             try:
+                if os.name == "nt":
+                    n += _evict_windows(f)
+                    continue
                 fd = os.open(f, os.O_RDONLY)
                 os.fdatasync(fd)
                 os.posix_fadvise(fd, 0, 0, os.POSIX_FADV_DONTNEED)
@@ -105,6 +127,25 @@ def evict_page_cache(path: Path) -> int:
             except OSError:
                 pass
     return n
+
+
+def cpu_name() -> str:
+    if os.name == "nt":
+        try:
+            import winreg
+
+            key = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, r"HARDWARE\DESCRIPTION\System\CentralProcessor\0")
+            return winreg.QueryValueEx(key, "ProcessorNameString")[0].strip()
+        except OSError:
+            return platform.processor()
+    try:
+        with open("/proc/cpuinfo") as fh:
+            for line in fh:
+                if line.startswith("model name"):
+                    return line.split(":", 1)[1].strip()
+    except OSError:
+        pass
+    return platform.processor() or ""
 
 
 def dir_size_gb(path: Path) -> float:
@@ -144,14 +185,7 @@ def env_info():
             "gpu_count": torch.cuda.device_count(),
             "bf16_native": torch.cuda.is_bf16_supported(including_emulation=False),
         })
-    try:
-        with open("/proc/cpuinfo") as fh:
-            for line in fh:
-                if line.startswith("model name"):
-                    info["cpu"] = line.split(":", 1)[1].strip()
-                    break
-    except OSError:
-        pass
+    info["cpu"] = cpu_name()
     return info
 
 
@@ -367,6 +401,7 @@ def main():
         phase = "generate_cold"
         n_evicted = evict_page_cache(split_dir)
         print(f"evicted {n_evicted} split files from the page cache", flush=True)
+        result["page_cache_evicted_files"] = n_evicted
         result["runs"]["cold"] = timed_generate(model, enc, args.max_new_tokens, sampler, stats)
         print(json.dumps({k: v for k, v in result["runs"]["cold"].items() if k != "per_token_s"}, indent=1), flush=True)
         save()

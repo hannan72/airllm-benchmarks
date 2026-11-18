@@ -72,6 +72,17 @@ PLANS = {
         # 49.9 GB single shard: split straight from the Hub by byte ranges (never on disk)
         ("gemma-4-26B-A4B-it", ["4bit-2d:nogc"], 16, ["--lazy-split"]),
     ],
+    # another 8 GB GPU (Windows PC, GTX 1070): only the tuned configs that the cross-GPU table uses
+    # (NF4 on weight matrices only / native weights, both without per-layer gc); bf16 only up to 12B
+    "tuned8gb": [
+        ("gemma-4-E2B-it-qat-mobile-ct", ["none:nogc"], 32, []),
+        ("gemma-4-E4B-it", ["4bit-2d:nogc", "none:nogc"], 32, []),
+        ("Qwen3.5-9B", ["4bit-2d:nogc", "none:nogc"], 32, []),
+        ("gemma-4-12B-it", ["4bit-2d:nogc", "none:nogc"], 32, []),
+        ("gemma-4-26B-A4B-it", ["4bit-2d:nogc"], 16, ["--lazy-split"]),
+        ("Qwen3.6-27B", ["4bit-2d:nogc"], 16, []),
+        ("Qwen3.8-27B", ["4bit-2d:nogc"], 16, []),
+    ],
 }
 
 
@@ -88,7 +99,14 @@ def hf_cache_dir(model):
     return Path(constants.HF_HUB_CACHE) / ("models--" + repo_of(model).replace("/", "--"))
 
 
-def free_gb(path="/"):
+def free_gb(path=None):
+    """Free GB on the disk that holds the HF cache (on Windows it may not be the current drive)."""
+    if path is None:
+        from huggingface_hub import constants
+
+        path = Path(constants.HF_HUB_CACHE)
+        while not path.exists() and path != path.parent:
+            path = path.parent
     return shutil.disk_usage(path).free / 1e9
 
 
@@ -129,8 +147,8 @@ def wait_for_idle_gpu(max_used_gb=1.0, poll_s=30, idle_for_s=300):
         waited += poll_s
 
 
-def result_ok(out_dir, model, comp):
-    f = out_dir / f"{model}__{comp.replace(':', '__')}.json"
+def result_ok(out_dir, model, comp, dtype="auto"):
+    f = out_dir / (f"{model}__{comp.replace(':', '__')}" + (f"__{dtype}" if dtype != "auto" else "") + ".json")
     if not f.exists():
         return False
     try:
@@ -158,6 +176,8 @@ def main():
     ap.add_argument("--no-prefetch", action="store_true")
     ap.add_argument("--no-wait-gpu", action="store_true")
     ap.add_argument("--timeout-min", type=int, default=240)
+    ap.add_argument("--dtype", default="auto", choices=["auto", "fp16", "bf16"],
+                    help="running dtype for every job (fp16 for GPUs without bf16 matmul)")
     args = ap.parse_args()
 
     out_dir = Path(args.out_dir)
@@ -173,11 +193,12 @@ def main():
         if not args.no_prefetch and i + 1 < len(plan) and prefetcher is None:
             nxt = plan[i + 1][0]
             need_now = SIZE_GB[model] * (1 + 0.3 + 1) if not hf_cache_dir(model).exists() else SIZE_GB[model] * 1.3
-            if free_gb() - need_now - SIZE_GB[nxt] > 15 and not all(result_ok(out_dir, nxt, c) for c in plan[i + 1][1]):
+            if free_gb() - need_now - SIZE_GB[nxt] > 15 and \
+                    not all(result_ok(out_dir, nxt, c, args.dtype) for c in plan[i + 1][1]):
                 prefetcher = prefetch(nxt)
 
         for comp in comps:
-            if result_ok(out_dir, model, comp):
+            if result_ok(out_dir, model, comp, args.dtype):
                 print(f"[matrix] skip {model} {comp} (done)", flush=True)
                 continue
             if not args.no_wait_gpu:
@@ -187,7 +208,7 @@ def main():
             cmd = [PY, str(HERE / "run_bench.py"), "--model", model, "--compression", comp_arg,
                    *(["--no-gc"] if "nogc" in flags else []),
                    "--max-new-tokens", str(max_new), "--out-dir", str(out_dir), "--work-dir", args.work_dir,
-                   *extra]
+                   "--dtype", args.dtype, *extra]
             with open(ROOT / "logs" / f"{out_dir.name}_{model}__{comp.replace(':', '__')}.log", "w") as log:
                 try:
                     rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, env=env,

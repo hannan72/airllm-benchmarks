@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 """results/gpus.png: single-stream decode speed of every model on every GPU (log scale).
 
-Small GPUs (RTX 2070, T4): AirLLM tuned (NF4 matrices only + no gc), because the models do not fit.
+Small GPUs (RTX 2070, T4, GTX 1070): AirLLM tuned (NF4 matrices only + no gc), because the models do not fit.
 Big GPUs: the model deployed directly; ZeroGPU with plain transformers (vLLM cannot run there),
-A100 / H100 with vLLM. One dot per GPU, one row per model.
+A100 / H100 on Modal with vLLM. One dot per GPU, one row per model.
 """
 
 import sys
@@ -17,19 +17,21 @@ from matplotlib.ticker import FixedLocator, FuncFormatter, NullLocator  # noqa: 
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from report import ORDER, _best, load, load_direct  # noqa: E402
+from report import AIRLLM_HOSTS, ORDER, _best, load, load_direct  # noqa: E402
 
 LABEL = {"gemma-4-E2B-it-qat-mobile-ct": "Gemma-4-E2B-qat", "gemma-4-E4B-it": "Gemma-4-E4B",
          "Qwen3.5-9B": "Qwen3.5-9B", "gemma-4-12B-it": "Gemma-4-12B", "gemma-4-26B-A4B-it": "Gemma-4-26B-A4B",
          "Qwen3.6-27B": "Qwen3.6-27B", "Qwen3.8-27B": "Qwen3.8-27B"}
-# reference palette (dataviz skill), categorical slots 1-5 in fixed order, light mode
+# reference palette (dataviz skill), categorical slots 1-7 in fixed order, light mode
 SURFACE, INK, INK2, MUTED, GRID, AXIS = "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"
 SERIES = [
     ("local-rtx2070", "RTX 2070 8 GB · AirLLM tuned", "#2a78d6", "o"),
     ("kaggle-t4", "T4 16 GB · AirLLM tuned", "#eb6834", "s"),
     ("zerogpu-rtxpro6000", "ZeroGPU RTX PRO 6000 · transformers", "#1baf7a", "D"),
-    ("lightning-a100", "A100 40 GB · vLLM", "#eda100", "^"),
-    ("lightning-h100", "H100 80 GB · vLLM", "#e87ba4", "v"),
+    ("modal-a100-40", "A100 40 GB · vLLM", "#eda100", "^"),
+    ("modal-a100-80", "A100 80 GB · vLLM", "#e87ba4", "v"),
+    ("modal-h100", "H100 80 GB · vLLM", "#008300", "P"),
+    ("local-gtx1070", "GTX 1070 8 GB · AirLLM tuned", "#6250d6", "X"),
 ]
 
 
@@ -37,7 +39,7 @@ def speeds(host):
     d = ROOT / "results" / host
     if not d.is_dir():
         return {}
-    if host in ("local-rtx2070", "kaggle-t4"):
+    if host in AIRLLM_HOSTS:
         rows = load(d)
         out = {}
         for m in ORDER:
