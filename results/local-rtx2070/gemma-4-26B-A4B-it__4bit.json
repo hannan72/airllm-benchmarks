@@ -7,7 +7,7 @@
   "max_new_tokens": 16,
   "prompt": "Explain how a CPU cache works in one short paragraph.",
   "airllm_class": "AirLLMGemma4",
-  "status": "running",
+  "status": "ok",
   "started": "2026-11-18T05:04:52",
   "env": {
     "hostname_tag": "local-rtx2070",
@@ -96,10 +96,50 @@
       "peak_gpu_device_used_gb": 4.012,
       "peak_gpu_process_gb": 3.456,
       "other_gpu_pids_seen": []
+    },
+    "warm": {
+      "prompt_tokens": 24,
+      "new_tokens": 16,
+      "total_s": 237.074,
+      "ttft_s": 15.258,
+      "decode_s": 221.807,
+      "decode_tok_per_s": 0.0676,
+      "s_per_decode_token": 14.787,
+      "end_to_end_tok_per_s": 0.0675,
+      "per_token_s": [
+        14.8002,
+        14.9263,
+        14.7305,
+        14.7452,
+        14.6378,
+        14.859,
+        14.6772,
+        14.8776,
+        14.5641,
+        14.7649,
+        14.5296,
+        14.7146,
+        14.9217,
+        14.678,
+        15.3805
+      ],
+      "torch_peak_allocated_gb": 3.294,
+      "torch_peak_reserved_gb": 3.328,
+      "text": " l de de de de de de de de de de de de de de de",
+      "layer_load_s": 159.384,
+      "layer_load_gb": 220.462,
+      "layer_load_calls": 496,
+      "layer_load_gbps": 1.383,
+      "to_device_s": 1.355,
+      "peak_rss_gb": 1.935,
+      "peak_gpu_device_used_gb": 4.012,
+      "peak_gpu_process_gb": 3.456,
+      "other_gpu_pids_seen": []
     }
   },
   "running_dtype": "torch.bfloat16",
   "prefetching": false,
   "n_streamed_modules": 31,
-  "chat_template": true
+  "chat_template": true,
+  "finished": "2026-11-18T05:14:40"
 }
