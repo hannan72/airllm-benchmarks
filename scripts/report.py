@@ -24,14 +24,21 @@ def fmt(v, nd=2, suffix=""):
 
 
 def mode_label(r):
+    return _mode_label(r) + (" + no per-layer gc" if r.get("no_gc") else "")
+
+
+def _mode_label(r):
     if r["model"].endswith("-ct"):
         return "native QAT int2/4/8"
-    return {"none": "bf16", "4bit": "NF4 (AirLLM 4bit)", "8bit": "int8 (AirLLM 8bit)"}[r["compression"]]
+    return {"none": "bf16", "4bit": "NF4, all tensors (AirLLM 4bit)", "8bit": "int8 (AirLLM 8bit)",
+            "4bit-2d": "NF4, matrices only", "8bit-2d": "int8, matrices only"}[r["compression"]]
 
 
 def load(host_dir):
     rows = [json.loads(f.read_text()) for f in sorted(host_dir.glob("*.json"))]
-    key = lambda r: (ORDER.index(r["model"]) if r["model"] in ORDER else 99, r["compression"] != "4bit")
+    rank = {"4bit": 0, "none": 1, "4bit-2d": 2, "8bit": 3, "8bit-2d": 4}
+    key = lambda r: (ORDER.index(r["model"]) if r["model"] in ORDER else 99, bool(r.get("no_gc")),
+                     rank.get(r["compression"], 9))
     return sorted(rows, key=key)
 
 

@@ -308,7 +308,8 @@ def timed_generate(model, enc, max_new_tokens, sampler, stats):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", required=True, help="short name from bench/models.py or a HF repo id")
-    ap.add_argument("--compression", default="none", choices=["none", "4bit", "8bit"])
+    ap.add_argument("--compression", default="none", choices=["none", "4bit", "8bit", "4bit-2d", "8bit-2d"],
+                    help="'-2d': compress only weight matrices (>= 2 dims), keep norms/scalars in bf16")
     ap.add_argument("--dtype", default="auto", choices=["auto", "fp16", "bf16"])
     ap.add_argument("--max-new-tokens", type=int, default=32)
     ap.add_argument("--prompt", default=DEFAULT_PROMPT)
@@ -321,24 +322,31 @@ def main():
                          "(with --delete-original the full checkpoint never sits on disk)")
     ap.add_argument("--no-prefetch", action="store_true")
     ap.add_argument("--stock", action="store_true", help="use AirLLM's stock class (Qwen keeps vision tower)")
+    ap.add_argument("--no-gc", action="store_true", help="skip AirLLM's per-layer gc.collect()")
     ap.add_argument("--skip-warm", action="store_true")
     ap.add_argument("--tag", default="", help="suffix for the result file name")
     args = ap.parse_args()
 
+    matrices_only = args.compression.endswith("-2d")
+    if matrices_only:
+        os.environ["AIRLLM_COMPRESS_MIN_DIM"] = "2"  # read by airllm_compat at import
+    if args.no_gc:
+        os.environ["AIRLLM_NO_GC"] = "1"
     from models import MODELS, airllm_class_for, build
 
     repo_id = MODELS.get(args.model, args.model)
     short = args.model if args.model in MODELS else repo_id.split("/")[-1]
-    compression = None if args.compression == "none" else args.compression
+    compression = None if args.compression == "none" else args.compression.replace("-2d", "")
     dtype = {"auto": None, "fp16": torch.float16, "bf16": torch.bfloat16}[args.dtype]
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
-    name = f"{short}__{args.compression}" + (f"__{args.dtype}" if args.dtype != "auto" else "") + \
+    name = f"{short}__{args.compression}" + ("__nogc" if args.no_gc else "") + \
+           (f"__{args.dtype}" if args.dtype != "auto" else "") + \
            (f"__{args.tag}" if args.tag else "")
     out_file = out_dir / f"{name}.json"
 
-    layers_root = Path(args.work_dir) / "layers" / short
+    layers_root = Path(args.work_dir) / "layers" / (short + ("-2d" if matrices_only else ""))
     split_dir = layers_root / ("splitted_model" + (f".{compression}" if compression else ""))
 
     result = {
@@ -346,6 +354,7 @@ def main():
         "repo_id": repo_id,
         "compression": args.compression,
         "dtype_arg": args.dtype,
+        "no_gc": bool(args.no_gc),
         "max_new_tokens": args.max_new_tokens,
         "prompt": args.prompt,
         "airllm_class": None,

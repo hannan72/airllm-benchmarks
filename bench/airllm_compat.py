@@ -97,3 +97,55 @@ def _decompress_state_dict_fixed(self, state_dict):
 
 
 _base.AirLLMBaseModel._decompress_state_dict = _decompress_state_dict_fixed
+
+
+# --- optional: NF4-compress only weight matrices ----------------------------------------------
+#
+# AirLLM's ``compression='4bit'`` quantizes *every* tensor of a layer to NF4 (blocksize 64),
+# including RMSNorm weights, per-layer scalars and other 1-D parameters. Regular weight-only
+# quantizers (bitsandbytes / GPTQ / AWQ) leave those in full precision. With
+# AIRLLM_COMPRESS_MIN_DIM=2 only tensors with >= 2 dims are compressed; the rest are stored as is.
+
+import os as _os
+
+import airllm.utils as _utils
+
+_COMPRESS_MIN_DIM = int(_os.environ.get("AIRLLM_COMPRESS_MIN_DIM", "0"))
+_orig_compress = _utils.compress_layer_state_dict
+_orig_uncompress = _utils.uncompress_layer_state_dict
+
+
+def _compress_min_dim(layer_state_dict, compression=None):
+    if compression is None or _COMPRESS_MIN_DIM <= 1:
+        return _orig_compress(layer_state_dict, compression)
+    big = {k: v for k, v in layer_state_dict.items() if v.dim() >= _COMPRESS_MIN_DIM}
+    out = _orig_compress(big, compression) if big else {}
+    out.update({k: v for k, v in layer_state_dict.items() if v.dim() < _COMPRESS_MIN_DIM})
+    return out
+
+
+def _uncompress_mixed(layer_state_dict):
+    """Original only handles all-or-nothing compressed shards; pass uncompressed tensors through."""
+    tags = (".4bit.", ".8bit.")
+    if not any(t in k for k in layer_state_dict for t in tags):
+        return layer_state_dict
+    bases = {k.split(".4bit.")[0].split(".8bit.")[0] for k in layer_state_dict if any(t in k for t in tags)}
+    quant = {k: v for k, v in layer_state_dict.items() if k in bases or any(t in k for t in tags)}
+    out = _orig_uncompress(quant)
+    out.update({k: v for k, v in layer_state_dict.items() if k not in quant})
+    return out
+
+
+_utils.compress_layer_state_dict = _compress_min_dim
+_utils.uncompress_layer_state_dict = _uncompress_mixed
+
+
+# --- optional: skip AirLLM's per-layer garbage collection -------------------------------------
+#
+# AirLLM calls clean_memory() (gc.collect + malloc_trim + torch.cuda.empty_cache) after *every*
+# streamed module. With a transformers model graph alive, gc.collect() alone costs ~100 ms
+# (≈435k tracked objects for Gemma 4 E4B), i.e. several seconds per generated token. Tensors are
+# freed by reference counting anyway. AIRLLM_NO_GC=1 turns the per-layer call into a no-op.
+
+if _os.environ.get("AIRLLM_NO_GC") == "1":
+    _base.clean_memory = lambda: None

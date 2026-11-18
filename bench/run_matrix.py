@@ -37,14 +37,16 @@ SIZE_GB = {
 # (model, [compressions], max_new_tokens, extra run_bench args)
 PLANS = {
     # 8 GB laptop GPU, ~150 GB free disk: keep originals, run bf16 and 4-bit for every model
+    # "<compression>[:nogc]": stock AirLLM ("none" = bf16, "4bit" = NF4 on every tensor) plus a
+    # tuned variant: NF4 on weight matrices only and no per-layer gc.collect()
     "local": [
-        ("gemma-4-E2B-it-qat-mobile-ct", ["none"], 32, []),  # already int2/int4/int8 (compressed-tensors)
-        ("gemma-4-E4B-it", ["4bit", "none"], 32, []),
-        ("Qwen3.5-9B", ["4bit", "none"], 32, []),
-        ("gemma-4-12B-it", ["4bit", "none"], 32, []),
-        ("gemma-4-26B-A4B-it", ["4bit", "none"], 16, []),
-        ("Qwen3.6-27B", ["4bit", "none"], 16, []),
-        ("Qwen3.8-27B", ["4bit", "none"], 16, []),
+        ("gemma-4-E2B-it-qat-mobile-ct", ["none", "none:nogc"], 32, []),  # already int2/4/8 (compressed-tensors)
+        ("gemma-4-E4B-it", ["4bit", "none", "4bit-2d:nogc", "none:nogc"], 32, []),
+        ("Qwen3.5-9B", ["4bit", "none", "4bit-2d:nogc", "none:nogc"], 32, []),
+        ("gemma-4-12B-it", ["4bit", "none", "4bit-2d:nogc", "none:nogc"], 32, []),
+        ("gemma-4-26B-A4B-it", ["4bit", "none", "4bit-2d:nogc"], 16, []),
+        ("Qwen3.6-27B", ["4bit", "none", "4bit-2d:nogc"], 16, []),
+        ("Qwen3.8-27B", ["4bit", "none", "4bit-2d:nogc"], 16, []),
     ],
     # Kaggle T4: limited disk, so the >25B models stream shards and keep only the 4-bit split
     "kaggle": [
@@ -114,7 +116,7 @@ def wait_for_idle_gpu(max_used_gb=1.0, poll_s=30, idle_for_s=300):
 
 
 def result_ok(out_dir, model, comp):
-    f = out_dir / f"{model}__{comp}.json"
+    f = out_dir / f"{model}__{comp.replace(':', '__')}.json"
     if not f.exists():
         return False
     try:
@@ -167,10 +169,12 @@ def main():
             if not args.no_wait_gpu:
                 wait_for_idle_gpu()
             print(f"[matrix] >>> {model} {comp}  free disk {free_gb():.0f} GB", flush=True)
-            cmd = [PY, str(HERE / "run_bench.py"), "--model", model, "--compression", comp,
+            comp_arg, *flags = comp.split(":")
+            cmd = [PY, str(HERE / "run_bench.py"), "--model", model, "--compression", comp_arg,
+                   *(["--no-gc"] if "nogc" in flags else []),
                    "--max-new-tokens", str(max_new), "--out-dir", str(out_dir), "--work-dir", args.work_dir,
                    *extra]
-            with open(ROOT / "logs" / f"{out_dir.name}_{model}__{comp}.log", "w") as log:
+            with open(ROOT / "logs" / f"{out_dir.name}_{model}__{comp.replace(':', '__')}.log", "w") as log:
                 try:
                     rc = subprocess.run(cmd, stdout=log, stderr=subprocess.STDOUT, env=env,
                                         timeout=args.timeout_min * 60).returncode
@@ -183,6 +187,7 @@ def main():
 
         if args.cleanup:
             shutil.rmtree(Path(args.work_dir) / "layers" / model, ignore_errors=True)
+            shutil.rmtree(Path(args.work_dir) / "layers" / (model + "-2d"), ignore_errors=True)
             # don't delete a cache that the prefetcher is still writing for the *next* model
             shutil.rmtree(hf_cache_dir(model), ignore_errors=True)
             print(f"[matrix] cleaned {model}; free disk {free_gb():.0f} GB", flush=True)
