@@ -89,6 +89,48 @@ def env_line(rows):
             f"airllm {e.get('airllm')} · bitsandbytes {e.get('bitsandbytes')}")
 
 
+GARBLED = {("gemma-4-E4B-it", "4bit"), ("gemma-4-12B-it", "4bit"), ("gemma-4-26B-A4B-it", "4bit")}
+HOST_LABEL = {"local-rtx2070": "RTX 2070 Max-Q (8 GB)", "kaggle-t4": "Kaggle T4 (16 GB)"}
+
+
+def _best(rows, model, tuned):
+    """Fastest correct stock config, or the tuned config (NF4 matrices only / native + no gc)."""
+    cands = []
+    for r in rows:
+        if r["model"] != model or r.get("status") != "ok" or "warm" not in r.get("runs", {}):
+            continue
+        if tuned != bool(r.get("no_gc")):
+            continue
+        if not tuned and (r["compression"] not in ("none", "4bit") or (model, r["compression"]) in GARBLED):
+            continue
+        if tuned and not (r["compression"] == "4bit-2d" or model.endswith("-ct")):
+            continue
+        cands.append(r)
+    return max(cands, key=lambda r: r["runs"]["warm"]["decode_tok_per_s"], default=None)
+
+
+def headline(hosts):
+    out = ["| Model | GPU | Stock AirLLM 4.0 (best correct config) | Tuned (NF4 matrices only + no gc) | Speed-up | Peak VRAM (tuned) |",
+           "|---|---|---|---|---|---|"]
+    hosts = sorted(hosts, key=lambda d: (d.name != "local-rtx2070", d.name))
+    for m in ORDER:
+        for d in hosts:
+            rows = load(d)
+            s, t = _best(rows, m, False), _best(rows, m, True)
+            if s is None and t is None:
+                continue
+            failed = [r for r in rows if r["model"] == m and r.get("status") != "ok" and not r.get("no_gc")]
+            def cell(r):
+                w = r["runs"]["warm"]
+                return f"{w['s_per_decode_token']:.2f} s/token ({w['decode_tok_per_s']:.3f} tok/s), {mode_label(r).split(' (')[0].replace(' + no per-layer gc', '')}"
+            sc = cell(s) if s else ("split fails (49.9 GB shard)" if failed else "pending")
+            tc = cell(t) if t else "pending"
+            sp = f"**×{t['runs']['warm']['decode_tok_per_s'] / s['runs']['warm']['decode_tok_per_s']:.0f}**" if s and t else "–"
+            vr = f"{t['runs']['warm']['peak_gpu_process_gb']:.1f} GB" if t else "–"
+            out.append(f"| {m} | {HOST_LABEL.get(d.name, d.name)} | {sc} | {tc} | {sp} | {vr} |")
+    return "\n".join(out)
+
+
 def main():
     hosts = [d for d in sorted((ROOT / "results").iterdir()) if d.is_dir() and d.name != "smoke"]
     md = []
@@ -99,7 +141,17 @@ def main():
         md += [f"### {d.name}", "", env_line(rows), "", table(rows), "", "I/O breakdown (cold run):", "", io_table(rows), ""]
     text = "\n".join(md)
     (ROOT / "results" / "SUMMARY.md").write_text(text + "\n")
-    print(text)
+    if "--readme" in sys.argv:  # paste the tables into README.md between markers
+        readme = ROOT / "README.md"
+        r = readme.read_text()
+        hs, he = "<!-- headline:start -->", "<!-- headline:end -->"
+        r = r[:r.index(hs) + len(hs)] + "\n" + headline(hosts) + "\n" + r[r.index(he):]
+        start, end = "<!-- results:start -->", "<!-- results:end -->"
+        i, j = r.index(start) + len(start), r.index(end)
+        readme.write_text(r[:i] + "\n" + text.replace("### ", "#### ") + "\n" + r[j:])
+        print("README.md updated")
+    else:
+        print(text)
 
 
 if __name__ == "__main__":
