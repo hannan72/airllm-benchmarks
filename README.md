@@ -13,7 +13,8 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
 * **Out of the box it is slow and partly broken**: 0.01–0.16 tokens/s (6–80 s per token).
   Gemma 4 is not supported (we wrote an adapter). AirLLM's own `4bit` mode **produces garbage for
   every bf16 Gemma 4 model**. Its splitter **cannot convert Gemma-4-26B-A4B** (one 49.9 GB shard).
-* **Two small changes make it 5–38× faster**: compress only the weight *matrices* to NF4 (not the
+* **Two small changes make it 2–38× faster** (5–38× whenever the layer files fit in free RAM):
+  compress only the weight *matrices* to NF4 (not the
   norms/scalars), and skip AirLLM's `gc.collect()` after every layer. Tuned, the ≤ 12B models do
   **0.5–1.6 tok/s** and the 26–27B models **0.08–0.4 tok/s**, with correct output. The 27B speed
   depends on whether the 15 GB of 4-bit layer files fit in free RAM (page cache).
@@ -36,7 +37,7 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
 | gemma-4-12B-it | Kaggle T4 (16 GB) | 79.80 s/token (0.013 tok/s), bf16 | 2.11 s/token (0.473 tok/s), NF4, matrices only | **×38** | 2.7 GB |
 | gemma-4-26B-A4B-it | RTX 2070 Max-Q (8 GB) | 26.97 s/token (0.037 tok/s), bf16 | 2.65 s/token (0.378 tok/s), NF4, matrices only | **×10** | 4.4 GB |
 | gemma-4-26B-A4B-it | Kaggle T4 (16 GB) | split fails (49.9 GB shard) | 5.01 s/token (0.200 tok/s), NF4, matrices only | – | 4.4 GB |
-| Qwen3.6-27B | RTX 2070 Max-Q (8 GB) | 22.18 s/token (0.045 tok/s), NF4, all tensors | pending | – | – |
+| Qwen3.6-27B | RTX 2070 Max-Q (8 GB) | 22.18 s/token (0.045 tok/s), NF4, all tensors | 12.32 s/token (0.081 tok/s), NF4, matrices only | **×2** | 3.7 GB |
 | Qwen3.6-27B | Kaggle T4 (16 GB) | 24.54 s/token (0.041 tok/s), NF4, all tensors | 4.91 s/token (0.203 tok/s), NF4, matrices only | **×5** | 3.7 GB |
 | Qwen3.8-27B | RTX 2070 Max-Q (8 GB) | 22.99 s/token (0.043 tok/s), NF4, all tensors | 12.31 s/token (0.081 tok/s), NF4, matrices only | **×2** | 3.7 GB |
 | Qwen3.8-27B | Kaggle T4 (16 GB) | 24.47 s/token (0.041 tok/s), NF4, all tensors | 4.81 s/token (0.208 tok/s), NF4, matrices only | **×5** | 3.7 GB |
@@ -221,6 +222,7 @@ NVIDIA GeForce RTX 2070 with Max-Q Design (8.16 GB, sm_75, bf16 native: False) �
 | gemma-4-26B-A4B-it | 25.8B MoE (4B act.) | NF4, matrices only + no per-layer gc | 14.2 GB | 1.7 min (lazy split) | 5 s | 10.9 s | 2.44 | 2.65 | 0.378 | 4.44 / 4.31 GB | 2.1 GB | A CPU cache works as a high-speed, small-capacity memory buffer located |
 | Qwen3.6-27B | 27.8B | NF4, all tensors (AirLLM 4bit) | 15.1 GB | 1.3 min | 3 s | 21.9 s | 21.65 | 22.18 | 0.045 | 3.64 / 3.51 GB | 2.3 GB | A CPU cache is a small, high-speed memory located close to the… |
 | Qwen3.6-27B | 27.8B | bf16 | 53.8 GB | 2.2 min | 3 s | 35.3 s | 35.61 | 36.34 | 0.028 | 2.85 / 2.72 GB | 5.2 GB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.6-27B | 27.8B | NF4, matrices only + no per-layer gc | 15.1 GB | 1.3 min | 3 s | 13.4 s | 11.93 | 12.32 | 0.081 | 3.73 / 3.60 GB | 2.0 GB | A CPU cache is a small, high-speed memory component located close to… |
 | Qwen3.8-27B | 27.8B | NF4, all tensors (AirLLM 4bit) | 15.1 GB | 1.3 min | 3 s | 24.4 s | 25.05 | 22.99 | 0.043 | 3.64 / 3.51 GB | 2.0 GB | A CPU cache is a small, high-speed memory located on or near… |
 | Qwen3.8-27B | 27.8B | bf16 | 53.8 GB | 2.1 min | 3 s | 35.3 s | 39.97 | 42.04 | 0.024 | 2.85 / 2.72 GB | 5.1 GB | A CPU cache is a small, high-speed memory located on or near… |
 | Qwen3.8-27B | 27.8B | NF4, matrices only + no per-layer gc | 15.1 GB | 1.2 min | 3 s | 13.2 s | 11.95 | 12.31 | 0.081 | 3.73 / 3.60 GB | 2.0 GB | A CPU cache is a small, high-speed memory located on or near… |
@@ -248,6 +250,7 @@ I/O breakdown (cold run):
 | gemma-4-26B-A4B-it | NF4, matrices only + no per-layer gc | 13.78 | 2.50 s | 5.51 | 0.13 s | off |
 | Qwen3.6-27B | NF4, all tensors (AirLLM 4bit) | 15.13 | 11.73 s | 1.29 | 0.14 s | off |
 | Qwen3.6-27B | bf16 | 53.79 | 27.40 s | 1.96 | 7.63 s | on |
+| Qwen3.6-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
 | Qwen3.8-27B | NF4, all tensors (AirLLM 4bit) | 15.13 | 13.38 s | 1.13 | 0.16 s | off |
 | Qwen3.8-27B | bf16 | 53.79 | 30.68 s | 1.75 | 8.40 s | on |
 | Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
