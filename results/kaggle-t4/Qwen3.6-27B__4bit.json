@@ -3,20 +3,78 @@
   "repo_id": "Qwen/Qwen3.6-27B",
   "compression": "4bit",
   "dtype_arg": "auto",
+  "no_gc": false,
   "max_new_tokens": 16,
   "airllm_class": "AirLLMQwen3_5TextOnly",
-  "status": "error",
-  "started": "2026-11-18T03:43:06",
-  "finished": "2026-11-18T03:43:07",
-  "error_phase": "convert",
-  "error": "OSError: [Errno 30] Read-only file system: '/tmp/hf/hub/models--Qwen--Qwen3.6-27B'",
+  "status": "ok",
+  "started": "2026-11-18T04:17:28",
+  "finished": "2026-11-18T04:41:35",
   "phases": {
     "stream_download": true,
-    "download_s": 0,
-    "init_mem": {},
-    "convert_mem": {}
+    "download_s": 0.0,
+    "convert_s": 590.44,
+    "split_preexisting": false,
+    "split_size_gb": 15.13,
+    "convert_mem": {
+      "peak_rss_gb": 15.081
+    },
+    "init_s": 11.55,
+    "init_mem": {
+      "peak_rss_gb": 1.365,
+      "peak_gpu_process_gb": 0.124
+    },
+    "init_torch_allocated_gb": 0.0
   },
-  "runs": {},
+  "runs": {
+    "cold": {
+      "prompt_tokens": 24,
+      "new_tokens": 16,
+      "total_s": 452.141,
+      "ttft_s": 55.929,
+      "decode_s": 396.212,
+      "decode_tok_per_s": 0.0379,
+      "s_per_decode_token": 26.414,
+      "end_to_end_tok_per_s": 0.0354,
+      "torch_peak_allocated_gb": 3.425,
+      "torch_peak_reserved_gb": 3.515,
+      "text": "A CPU cache is a small, high-speed memory located close to the processor that",
+      "layer_load_s": 138.919,
+      "layer_load_gb": 242.073,
+      "layer_load_calls": 1072,
+      "layer_load_gbps": 1.743,
+      "to_device_s": 4.274,
+      "peak_rss_gb": 2.59,
+      "peak_gpu_device_used_gb": 4.124,
+      "peak_gpu_process_gb": 3.651,
+      "other_gpu_pids_seen": []
+    },
+    "warm": {
+      "prompt_tokens": 24,
+      "new_tokens": 16,
+      "total_s": 392.663,
+      "ttft_s": 24.548,
+      "decode_s": 368.114,
+      "decode_tok_per_s": 0.0407,
+      "s_per_decode_token": 24.541,
+      "end_to_end_tok_per_s": 0.0407,
+      "torch_peak_allocated_gb": 3.425,
+      "torch_peak_reserved_gb": 4.249,
+      "text": "A CPU cache is a small, high-speed memory located close to the processor that",
+      "layer_load_s": 78.462,
+      "layer_load_gb": 242.073,
+      "layer_load_calls": 1072,
+      "layer_load_gbps": 3.085,
+      "to_device_s": 3.358,
+      "peak_rss_gb": 2.594,
+      "peak_gpu_device_used_gb": 4.858,
+      "peak_gpu_process_gb": 4.385,
+      "other_gpu_pids_seen": []
+    }
+  },
+  "running_dtype": "torch.bfloat16",
+  "prefetching": false,
+  "n_streamed_modules": 67,
+  "chat_template": true,
   "env": {
     "hostname_tag": "kaggle-t4",
     "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
@@ -36,5 +94,6 @@
     "gpu_count": 2,
     "bf16_native": false
   },
-  "source": "Kaggle notebook hannankomari/airllm-t4-benchmarkac59eb628d v1 (per-token arrays and tracebacks omitted)"
+  "prompt": "Explain how a CPU cache works in one short paragraph.",
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmark-run2 (transcribed from run log; per-token arrays omitted)"
 }

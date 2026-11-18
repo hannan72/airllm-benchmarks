@@ -53,6 +53,8 @@ def table(rows):
             continue
         p, c, w = r["phases"], r["runs"].get("cold", {}), r["runs"].get("warm", {})
         conv = "cached" if p.get("split_preexisting") else fmt(p.get("convert_s", 0) / 60, 1, " min")
+        if p.get("lazy_split") and p["lazy_split"].get("bytes_read"):
+            conv += " (lazy split" + (", from Hub" if "remote" in p["lazy_split"].get("sources", []) else "") + ")"
         vram = f"{fmt(max(c.get('peak_gpu_process_gb') or 0, w.get('peak_gpu_process_gb') or 0))} / " \
                f"{fmt(max(c.get('torch_peak_reserved_gb') or 0, w.get('torch_peak_reserved_gb') or 0))} GB"
         ram = fmt(max(c.get("peak_rss_gb") or 0, w.get("peak_rss_gb") or 0, (p.get("init_mem") or {}).get("peak_rss_gb") or 0), 1, " GB")

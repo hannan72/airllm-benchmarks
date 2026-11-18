@@ -1,0 +1,107 @@
+{
+  "model": "gemma-4-26B-A4B-it",
+  "repo_id": "google/gemma-4-26B-A4B-it",
+  "compression": "4bit-2d",
+  "dtype_arg": "auto",
+  "no_gc": true,
+  "max_new_tokens": 16,
+  "airllm_class": "AirLLMGemma4",
+  "status": "ok",
+  "started": "2026-11-18T05:54:25",
+  "finished": "2026-11-18T06:08:21",
+  "phases": {
+    "stream_download": false,
+    "download_s": 0.2,
+    "lazy_split": {
+      "layers": 32,
+      "bytes_read": 50466283580,
+      "seconds": 427.94,
+      "sources": [
+        "remote"
+      ]
+    },
+    "convert_s": 428.02,
+    "split_preexisting": false,
+    "split_size_gb": 14.195,
+    "convert_mem": {
+      "peak_rss_gb": 21.984
+    },
+    "init_s": 12.22,
+    "init_mem": {
+      "peak_rss_gb": 9.831,
+      "peak_gpu_process_gb": 2.036
+    },
+    "init_torch_allocated_gb": 1.476
+  },
+  "runs": {
+    "cold": {
+      "prompt_tokens": 24,
+      "new_tokens": 16,
+      "total_s": 313.929,
+      "ttft_s": 43.45,
+      "decode_s": 270.475,
+      "decode_tok_per_s": 0.0555,
+      "s_per_decode_token": 18.032,
+      "end_to_end_tok_per_s": 0.051,
+      "torch_peak_allocated_gb": 3.303,
+      "torch_peak_reserved_gb": 4.272,
+      "text": "A CPU cache works as a high-speed, small-capacity memory buffer located",
+      "layer_load_s": 290.635,
+      "layer_load_gb": 220.475,
+      "layer_load_calls": 496,
+      "layer_load_gbps": 0.759,
+      "to_device_s": 15.833,
+      "peak_rss_gb": 10.066,
+      "peak_gpu_device_used_gb": 4.881,
+      "peak_gpu_process_gb": 4.408,
+      "other_gpu_pids_seen": []
+    },
+    "warm": {
+      "prompt_tokens": 24,
+      "new_tokens": 16,
+      "total_s": 80.65,
+      "ttft_s": 5.453,
+      "decode_s": 75.195,
+      "decode_tok_per_s": 0.1995,
+      "s_per_decode_token": 5.013,
+      "end_to_end_tok_per_s": 0.1984,
+      "torch_peak_allocated_gb": 3.303,
+      "torch_peak_reserved_gb": 4.272,
+      "text": "A CPU cache works as a high-speed, small-capacity memory buffer located",
+      "layer_load_s": 63.921,
+      "layer_load_gb": 220.475,
+      "layer_load_calls": 496,
+      "layer_load_gbps": 3.449,
+      "to_device_s": 10.424,
+      "peak_rss_gb": 9.77,
+      "peak_gpu_device_used_gb": 4.881,
+      "peak_gpu_process_gb": 4.408,
+      "other_gpu_pids_seen": []
+    }
+  },
+  "running_dtype": "torch.bfloat16",
+  "prefetching": false,
+  "n_streamed_modules": 31,
+  "chat_template": true,
+  "env": {
+    "hostname_tag": "kaggle-t4",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+    "python": "3.13.16",
+    "cpu": "Intel(R) Xeon(R) CPU @ 2.00GHz",
+    "cpu_count": 4,
+    "ram_total_gb": 33.7,
+    "torch": "2.11.0+cu130",
+    "cuda_runtime": "13.0",
+    "transformers": "5.20.2",
+    "airllm": "4.0.0",
+    "bitsandbytes": "0.50.2",
+    "compressed_tensors": "0.20.1",
+    "gpu": "Tesla T4",
+    "gpu_vram_gb": 15.64,
+    "gpu_cc": "7.5",
+    "gpu_count": 2,
+    "bf16_native": false
+  },
+  "prompt": "Explain how a CPU cache works in one short paragraph.",
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmark-run2 (transcribed from run log; per-token arrays omitted)"
+}

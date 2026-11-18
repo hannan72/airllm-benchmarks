@@ -390,7 +390,17 @@ def main():
         if not split_preexisting and args.lazy_split:
             snapshot_download(repo_id, ignore_patterns=["*.safetensors", "*.bin", "*.pth"])  # metadata only
         elif not split_preexisting and not args.stream_download:
-            snapshot_download(repo_id)
+            # retry through network drops (seen on the local link); completed files are kept
+            for attempt in range(30):
+                try:
+                    snapshot_download(repo_id)
+                    break
+                except Exception as e:  # noqa: BLE001
+                    if attempt == 29:
+                        raise
+                    print(f"download attempt {attempt + 1} failed ({type(e).__name__}: {str(e)[:120]}); "
+                          f"retrying in 60 s", flush=True)
+                    time.sleep(60)
         result["phases"]["stream_download"] = bool(args.stream_download)
         result["phases"]["download_s"] = round(time.perf_counter() - t, 2)
 
