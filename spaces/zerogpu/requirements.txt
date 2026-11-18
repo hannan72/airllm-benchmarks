@@ -1,0 +1,10 @@
+torch==2.11.0
+transformers==5.23.0
+accelerate
+safetensors
+compressed-tensors
+huggingface_hub[hf_xet]
+psutil
+nvidia-ml-py
+sentencepiece
+flash-linear-attention

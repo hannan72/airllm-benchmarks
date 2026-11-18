@@ -1,0 +1,58 @@
+{
+  "model": "gemma-4-12B-it",
+  "repo_id": "google/gemma-4-12B-it",
+  "engine": "hf",
+  "weights": "bf16",
+  "phases": {
+    "download_s": 23.11,
+    "checkpoint_gb": 23.92,
+    "load_s": 4.8
+  },
+  "hf_class": "AutoModelForImageTextToText",
+  "started": "2026-11-18T12:27:59",
+  "runs": {
+    "single": {
+      "prompt_tokens": 24,
+      "new_tokens": 64,
+      "ttft_s": 0.0618,
+      "ttft_samples_s": [
+        0.0633,
+        0.0602
+      ],
+      "decode_tok_per_s": 19.99,
+      "decode_samples_tok_per_s": [
+        20.15,
+        19.83
+      ],
+      "total_s": 3.2138,
+      "torch_peak_allocated_gb": 24.05,
+      "text": "A CPU cache is a small, high-speed memory buffer located directly on or very near the processor designed to bridge the speed gap between the fast CPU and the",
+      "gpu_function_s": 7.26,
+      "gpu_call_wall_s": 9.44
+    }
+  },
+  "chat_template": true,
+  "env": {
+    "hostname_tag": "zerogpu",
+    "platform": "Linux-6.18.62-127.179.amzn2023.x86_64-x86_64-with-glibc2.41",
+    "python": "3.12.12",
+    "cpu": "Intel(R) Xeon(R) Platinum 8559C",
+    "cpu_count": 192,
+    "ram_total_gb": 2147.4,
+    "torch": "2.11.0",
+    "transformers": "5.23.0",
+    "compressed_tensors": "0.20.1",
+    "spaces": "0.52.1",
+    "gradio": "6.32.0",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb",
+    "gpu_vram_gb": 50.87,
+    "gpu_cc": "12.0",
+    "gpu_count": 1,
+    "cuda_runtime": "13.0",
+    "bf16_native": true,
+    "zerogpu_size": "large"
+  },
+  "status": "ok",
+  "finished": "2026-11-18T12:28:09",
+  "source": "HF ZeroGPU Space Hannan/airllm-bench-zerogpu (private), transcribed from the container log"
+}

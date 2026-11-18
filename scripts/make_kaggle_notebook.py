@@ -12,7 +12,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BENCH_FILES = ["airllm_compat.py", "airllm_gemma4.py", "models.py", "lazy_split.py", "run_bench.py", "run_matrix.py"]
+BENCH_FILES = ["measure.py", "model_list.py", "airllm_compat.py", "airllm_gemma4.py", "models.py", "lazy_split.py", "run_bench.py", "run_matrix.py"]
 ap = argparse.ArgumentParser()
 ap.add_argument("--plan", default="kaggle", help="plan name in bench/run_matrix.py")
 ap.add_argument("--out", default="kaggle/airllm_t4_benchmark.ipynb")

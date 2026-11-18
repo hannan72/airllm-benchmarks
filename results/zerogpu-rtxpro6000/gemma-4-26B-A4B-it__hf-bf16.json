@@ -1,0 +1,58 @@
+{
+  "model": "gemma-4-26B-A4B-it",
+  "repo_id": "google/gemma-4-26B-A4B-it",
+  "engine": "hf",
+  "weights": "bf16",
+  "phases": {
+    "download_s": 41.6,
+    "checkpoint_gb": 51.612,
+    "load_s": 5.53
+  },
+  "hf_class": "AutoModelForImageTextToText",
+  "started": "2026-11-18T12:30:43",
+  "runs": {
+    "single": {
+      "prompt_tokens": 24,
+      "new_tokens": 64,
+      "ttft_s": 0.1109,
+      "ttft_samples_s": [
+        0.1097,
+        0.1121
+      ],
+      "decode_tok_per_s": 19.6,
+      "decode_samples_tok_per_s": [
+        19.69,
+        19.51
+      ],
+      "total_s": 3.3276,
+      "torch_peak_allocated_gb": 51.853,
+      "text": "A CPU cache acts as a high-speed buffer between the fast processor and the relatively slow main memory (RAM) to reduce data access latency. It works by",
+      "gpu_function_s": 7.71,
+      "gpu_call_wall_s": 11.98
+    }
+  },
+  "chat_template": true,
+  "env": {
+    "hostname_tag": "zerogpu",
+    "platform": "Linux-6.18.62-127.179.amzn2023.x86_64-x86_64-with-glibc2.41",
+    "python": "3.12.12",
+    "cpu": "Intel(R) Xeon(R) Platinum 8559C",
+    "cpu_count": 192,
+    "ram_total_gb": 2147.4,
+    "torch": "2.11.0",
+    "transformers": "5.23.0",
+    "compressed_tensors": "0.20.1",
+    "spaces": "0.52.1",
+    "gradio": "6.32.0",
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 4g.96gb",
+    "gpu_vram_gb": 101.98,
+    "gpu_cc": "12.0",
+    "gpu_count": 1,
+    "cuda_runtime": "13.0",
+    "bf16_native": true,
+    "zerogpu_size": "xlarge"
+  },
+  "status": "ok",
+  "finished": "2026-11-18T12:30:55",
+  "source": "HF ZeroGPU Space Hannan/airllm-bench-zerogpu (private), transcribed from the container log"
+}

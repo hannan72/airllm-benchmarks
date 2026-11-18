@@ -21,16 +21,7 @@ class AirLLMQwen3_5TextOnly(AirLLMQwen3_5):
         self.layer_names_dict["resident"] = []
 
 
-# short name -> (HF repo id, notes)
-MODELS = {
-    "gemma-4-E2B-it-qat-mobile-ct": "google/gemma-4-E2B-it-qat-mobile-ct",
-    "gemma-4-E4B-it": "google/gemma-4-E4B-it",
-    "gemma-4-12B-it": "google/gemma-4-12B-it",
-    "gemma-4-26B-A4B-it": "google/gemma-4-26B-A4B-it",
-    "Qwen3.5-9B": "Qwen/Qwen3.5-9B",
-    "Qwen3.6-27B": "Qwen/Qwen3.6-27B",
-    "Qwen3.8-27B": "Qwen/Qwen3.8-27B",
-}
+from model_list import MODELS  # noqa: E402,F401
 
 
 def airllm_class_for(repo_id: str, stock: bool = False):

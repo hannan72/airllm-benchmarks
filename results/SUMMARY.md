@@ -1,3 +1,15 @@
+### Decode tok/s by GPU
+
+| Model | RTX 2070 8 GB<br>AirLLM tuned | T4 16 GB<br>AirLLM tuned | ZeroGPU RTX PRO 6000<br>transformers bf16 |
+|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | 0.90 | 0.78 | – |
+| gemma-4-E4B-it | 1.55 | 0.97 | 23.7 |
+| Qwen3.5-9B | 1.05 | 0.59 | – |
+| gemma-4-12B-it | 0.85 | 0.47 | 20.0 |
+| gemma-4-26B-A4B-it | 0.38 | 0.20 | 19.6 |
+| Qwen3.6-27B | 0.08 | 0.20 | – |
+| Qwen3.8-27B | 0.08 | 0.21 | – |
+
 ### kaggle-t4
 
 Tesla T4 (15.64 GB, sm_75, bf16 native: False) · Intel(R) Xeon(R) CPU @ 2.00GHz · 33.7 GB RAM · torch 2.11.0+cu130 (CUDA 13.0) · transformers 5.20.2 · airllm 4.0.0 · bitsandbytes 0.50.2
@@ -100,4 +112,14 @@ I/O breakdown (cold run):
 | Qwen3.8-27B | NF4, all tensors (AirLLM 4bit) | 15.13 | 13.38 s | 1.13 | 0.16 s | off |
 | Qwen3.8-27B | bf16 | 53.79 | 30.68 s | 1.75 | 8.40 s | on |
 | Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
+
+### zerogpu-rtxpro6000 (direct, no AirLLM)
+
+NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb (50.87 GB, sm_120) · Intel(R) Xeon(R) Platinum 8559C · torch 2.11.0 (CUDA 13.0) · transformers 5.23.0
+
+| Model | Engine, weights | Checkpoint | Download | Start-up | TTFT | Decode tok/s (1 stream) | Batch tok/s (32 streams) | Weights / KV cache in VRAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E4B-it | transformers (eager), bf16 | 16.0 GB | 18 s | 8 s | 0.047 s | **23.7** | – | 15.9 GB peak (no pre-allocated cache) | A CPU cache is a small, extremely fast memory located close to… |
+| gemma-4-12B-it | transformers (eager), bf16 | 23.9 GB | 23 s | 5 s | 0.062 s | **20.0** | – | 24.1 GB peak (no pre-allocated cache) | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-26B-A4B-it | transformers (eager), bf16 | 51.6 GB | 42 s | 6 s | 0.111 s | **19.6** | – | 51.9 GB peak (no pre-allocated cache) | A CPU cache acts as a high-speed buffer between the fast processor… |
 
