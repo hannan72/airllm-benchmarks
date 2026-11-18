@@ -15,7 +15,8 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
   every bf16 Gemma 4 model**. Its splitter **cannot convert Gemma-4-26B-A4B** (one 49.9 GB shard).
 * **Two small changes make it 5–38× faster**: compress only the weight *matrices* to NF4 (not the
   norms/scalars), and skip AirLLM's `gc.collect()` after every layer. Tuned, the ≤ 12B models do
-  **0.5–1.6 tok/s** and the 26–27B models **0.2–0.4 tok/s**, with correct output.
+  **0.5–1.6 tok/s** and the 26–27B models **0.08–0.4 tok/s**, with correct output. The 27B speed
+  depends on whether the 15 GB of 4-bit layer files fit in free RAM (page cache).
 * Even tuned, AirLLM streams the **whole model (≈ 15 GB for a 4-bit 27B) for every token**, so it
   is a way to *run* a model that does not fit in VRAM, not a way to chat with it interactively.
   The MoE model (26B-A4B) gets no benefit from sparsity: all 128 experts are streamed per layer.
@@ -35,7 +36,9 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
 | gemma-4-12B-it | Kaggle T4 (16 GB) | 79.80 s/token (0.013 tok/s), bf16 | 2.11 s/token (0.473 tok/s), NF4, matrices only | **×38** | 2.7 GB |
 | gemma-4-26B-A4B-it | RTX 2070 Max-Q (8 GB) | 26.97 s/token (0.037 tok/s), bf16 | 2.65 s/token (0.378 tok/s), NF4, matrices only | **×10** | 4.4 GB |
 | gemma-4-26B-A4B-it | Kaggle T4 (16 GB) | split fails (49.9 GB shard) | 5.01 s/token (0.200 tok/s), NF4, matrices only | – | 4.4 GB |
+| Qwen3.6-27B | RTX 2070 Max-Q (8 GB) | 22.18 s/token (0.045 tok/s), NF4, all tensors | pending | – | – |
 | Qwen3.6-27B | Kaggle T4 (16 GB) | 24.54 s/token (0.041 tok/s), NF4, all tensors | 4.91 s/token (0.203 tok/s), NF4, matrices only | **×5** | 3.7 GB |
+| Qwen3.8-27B | RTX 2070 Max-Q (8 GB) | 22.99 s/token (0.043 tok/s), NF4, all tensors | 12.31 s/token (0.081 tok/s), NF4, matrices only | **×2** | 3.7 GB |
 | Qwen3.8-27B | Kaggle T4 (16 GB) | 24.47 s/token (0.041 tok/s), NF4, all tensors | 4.81 s/token (0.208 tok/s), NF4, matrices only | **×5** | 3.7 GB |
 <!-- headline:end -->
 
@@ -61,19 +64,22 @@ whose output is correct (bf16 for Gemma 4, AirLLM 4-bit for Qwen). Full tables: 
 4. **4-bit only pays off once the gc is gone.** AirLLM disables layer prefetching when compression is
    on, so stock 4-bit is barely faster than bf16 (E4B 6.7 vs 7.6 s/token) even though it reads 3.6×
    less data. Tuned 4-bit is the fastest configuration for every model.
-5. **Speed ≈ bytes per token ÷ read bandwidth.** A 4-bit 27B streams ≈ 15 GB per token. At the
-   ≈ 3–3.6 GB/s seen on both machines that is ≈ 5 s/token, exactly what the tuned runs show. When the
-   layer files fit in RAM, the page cache serves them after the first pass, so warm decode is faster than cold.
-   That's why the small models reach 1–1.6 tok/s while the 27B models stay disk-bound.
+5. **Speed ≈ bytes per token ÷ read bandwidth, and free RAM decides the bandwidth.** A 4-bit 27B
+   streams ≈ 15 GB per token. On Kaggle (≈ 30 GB of free RAM) the layer files stay in the page cache
+   after the first pass and load at ≈ 3.6 GB/s: 4.8–4.9 s/token. On the laptop only ≈ 14 GB was free
+   (other applications), so every token reads from the NVMe through AirLLM's serial, un-prefetched
+   4-bit loader at ≈ 1.3 GB/s: 12 s/token for the same model. The ≤ 12B models fit in the page
+   cache on both machines, which is why they reach 0.5–1.6 tok/s.
 6. **Big shards break AirLLM's splitter.** It loads whole checkpoint shards. Gemma-4-26B-A4B ships
    a 49.9 GB shard: locally it fails (`unable to mmap 49907246508 bytes … Cannot allocate memory`,
    31 GB RAM), and on Kaggle, streaming it filled the scratch quota and the filesystem went read-only.
    `bench/lazy_split.py` reads only one layer's byte ranges at a time. It works from a local file, or straight from
    the Hub over HTTP range requests, which never puts the checkpoint on disk. That made the 26B
    runnable on both machines; on Kaggle it split 50 GB from the Hub in 7 minutes.
-7. **Kaggle T4 vs the laptop.** In tuned mode the T4 run was 1.2–1.9× slower than the laptop
-   (E4B 0.97 vs 1.55 tok/s, 26B-A4B 0.20 vs 0.38): the GPU is not the bottleneck, and Kaggle's 4
-   vCPUs and storage are slower. Stock bf16 is very slow on Kaggle: layer reads ran at only
+7. **Kaggle T4 vs the laptop.** The GPU is never the bottleneck. In tuned mode the T4 run was
+   1.2–1.9× slower than the laptop for the models that fit in both page caches (E4B 0.97 vs 1.55
+   tok/s, 26B-A4B 0.20 vs 0.38): Kaggle's 4 vCPUs are slower. It was 2.6× *faster* for Qwen3.8-27B
+   (0.21 vs 0.08 tok/s), whose layer files fit in Kaggle's free RAM but not the laptop's. Stock bf16 is very slow on Kaggle: layer reads ran at only
    ≈ 0.3 GB/s, probably because of prefetch's pinned-memory copies on 4 vCPUs.
    Gemma-4-12B bf16 takes 80 s/token there.
 8. **Neither GPU has native bf16** (sm_75). PyTorch emulates it (2.7 vs 9 TFLOPS fp16 on the
@@ -136,6 +142,7 @@ files) and dequantizes on the GPU at load time.
 | `compression='4bit'` quantizes norms / scalars → garbage from Gemma 4 | `4bit-2d` mode (`AIRLLM_COMPRESS_MIN_DIM=2`) |
 | per-layer `gc.collect()` costs ≈ 0.1 s × layers per token | `:nogc` mode (`AIRLLM_NO_GC=1`) |
 | splitter loads whole shards; 49.9 GB shard of 26B-A4B fails (RAM) or overflows Kaggle's disk | `bench/lazy_split.py` (byte-range reads, local or from the Hub) |
+| disk-space check *divides* by the 4-bit ratio (`size / 0.2813`): it demands 3.6× the checkpoint size (184 GB for a 27B) and refuses to split with less free | corrected `check_space` in `bench/airllm_compat.py` |
 
 ## Full results
 
@@ -212,6 +219,11 @@ NVIDIA GeForce RTX 2070 with Max-Q Design (8.16 GB, sm_75, bf16 native: False) �
 | gemma-4-26B-A4B-it | 25.8B MoE (4B act.) | NF4, all tensors (AirLLM 4bit) | 14.2 GB | 1.8 min (lazy split) | 4 s | 16.5 s | 14.57 | 14.79 | 0.068 | 3.46 / 3.33 GB | 2.3 GB | l de de de de de de de de de de de… |
 | gemma-4-26B-A4B-it | 25.8B MoE (4B act.) | bf16 | 50.5 GB | 2.1 min (lazy split) | 6 s | 26.4 s | 24.73 | 26.97 | 0.037 | 3.37 / 3.24 GB | 7.2 GB | A CPU cache acts as a high-speed buffer between the fast processor… |
 | gemma-4-26B-A4B-it | 25.8B MoE (4B act.) | NF4, matrices only + no per-layer gc | 14.2 GB | 1.7 min (lazy split) | 5 s | 10.9 s | 2.44 | 2.65 | 0.378 | 4.44 / 4.31 GB | 2.1 GB | A CPU cache works as a high-speed, small-capacity memory buffer located |
+| Qwen3.6-27B | 27.8B | NF4, all tensors (AirLLM 4bit) | 15.1 GB | 1.3 min | 3 s | 21.9 s | 21.65 | 22.18 | 0.045 | 3.64 / 3.51 GB | 2.3 GB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.6-27B | 27.8B | bf16 | 53.8 GB | 2.2 min | 3 s | 35.3 s | 35.61 | 36.34 | 0.028 | 2.85 / 2.72 GB | 5.2 GB | A CPU cache is a small, high-speed memory located close to the… |
+| Qwen3.8-27B | 27.8B | NF4, all tensors (AirLLM 4bit) | 15.1 GB | 1.3 min | 3 s | 24.4 s | 25.05 | 22.99 | 0.043 | 3.64 / 3.51 GB | 2.0 GB | A CPU cache is a small, high-speed memory located on or near… |
+| Qwen3.8-27B | 27.8B | bf16 | 53.8 GB | 2.1 min | 3 s | 35.3 s | 39.97 | 42.04 | 0.024 | 2.85 / 2.72 GB | 5.1 GB | A CPU cache is a small, high-speed memory located on or near… |
+| Qwen3.8-27B | 27.8B | NF4, matrices only + no per-layer gc | 15.1 GB | 1.2 min | 3 s | 13.2 s | 11.95 | 12.31 | 0.081 | 3.73 / 3.60 GB | 2.0 GB | A CPU cache is a small, high-speed memory located on or near… |
 
 I/O breakdown (cold run):
 
@@ -234,6 +246,11 @@ I/O breakdown (cold run):
 | gemma-4-26B-A4B-it | NF4, all tensors (AirLLM 4bit) | 13.78 | 9.86 s | 1.40 | 0.08 s | off |
 | gemma-4-26B-A4B-it | bf16 | 48.99 | 20.08 s | 2.44 | 4.35 s | on |
 | gemma-4-26B-A4B-it | NF4, matrices only + no per-layer gc | 13.78 | 2.50 s | 5.51 | 0.13 s | off |
+| Qwen3.6-27B | NF4, all tensors (AirLLM 4bit) | 15.13 | 11.73 s | 1.29 | 0.14 s | off |
+| Qwen3.6-27B | bf16 | 53.79 | 27.40 s | 1.96 | 7.63 s | on |
+| Qwen3.8-27B | NF4, all tensors (AirLLM 4bit) | 15.13 | 13.38 s | 1.13 | 0.16 s | off |
+| Qwen3.8-27B | bf16 | 53.79 | 30.68 s | 1.75 | 8.40 s | on |
+| Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
 
 <!-- results:end -->
 
