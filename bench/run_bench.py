@@ -323,6 +323,9 @@ def main():
     ap.add_argument("--no-prefetch", action="store_true")
     ap.add_argument("--stock", action="store_true", help="use AirLLM's stock class (Qwen keeps vision tower)")
     ap.add_argument("--no-gc", action="store_true", help="skip AirLLM's per-layer gc.collect()")
+    ap.add_argument("--lazy-split", action="store_true",
+                    help="split with bench/lazy_split.py (byte-range reads, local or straight from the Hub) "
+                         "instead of AirLLM's whole-shard splitter")
     ap.add_argument("--skip-warm", action="store_true")
     ap.add_argument("--tag", default="", help="suffix for the result file name")
     args = ap.parse_args()
@@ -384,7 +387,9 @@ def main():
         # -- download --------------------------------------------------------------------------
         split_preexisting = split_dir.exists() and any(split_dir.glob("*.done"))
         t = time.perf_counter()
-        if not split_preexisting and not args.stream_download:
+        if not split_preexisting and args.lazy_split:
+            snapshot_download(repo_id, ignore_patterns=["*.safetensors", "*.bin", "*.pth"])  # metadata only
+        elif not split_preexisting and not args.stream_download:
             snapshot_download(repo_id)
         result["phases"]["stream_download"] = bool(args.stream_download)
         result["phases"]["download_s"] = round(time.perf_counter() - t, 2)
@@ -402,6 +407,11 @@ def main():
         probe = cls_for_names.__new__(cls_for_names)
         probe.set_layer_names_dict()
         t = time.perf_counter()
+        if args.lazy_split:
+            from lazy_split import lazy_split
+
+            result["phases"]["lazy_split"] = lazy_split(repo_id, layers_root, probe.layer_names_dict,
+                                                        compression=compression)
         find_or_create_local_splitted_path(repo_id, str(layers_root), compression=compression,
                                            layer_names=probe.layer_names_dict,
                                            delete_original=args.delete_original)

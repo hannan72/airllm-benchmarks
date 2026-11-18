@@ -1,0 +1,93 @@
+{
+  "model": "gemma-4-12B-it",
+  "repo_id": "google/gemma-4-12B-it",
+  "compression": "none",
+  "dtype_arg": "auto",
+  "max_new_tokens": 32,
+  "airllm_class": "AirLLMGemma4",
+  "status": "ok",
+  "started": "2026-11-18T02:17:26",
+  "finished": "2026-11-18T03:39:03",
+  "running_dtype": "torch.bfloat16",
+  "prefetching": true,
+  "n_streamed_modules": 49,
+  "chat_template": true,
+  "phases": {
+    "stream_download": false,
+    "download_s": 0.17,
+    "convert_s": 183.91,
+    "split_preexisting": false,
+    "split_size_gb": 23.815,
+    "init_s": 18.58,
+    "init_torch_allocated_gb": 2.013,
+    "init_mem": {
+      "peak_rss_gb": 5.279,
+      "peak_gpu_process_gb": 2.122
+    },
+    "convert_mem": {
+      "peak_rss_gb": 2.822
+    }
+  },
+  "runs": {
+    "cold": {
+      "prompt_tokens": 24,
+      "new_tokens": 32,
+      "total_s": 2130.983,
+      "ttft_s": 77.835,
+      "decode_s": 2053.137,
+      "decode_tok_per_s": 0.0151,
+      "s_per_decode_token": 66.23,
+      "torch_peak_allocated_gb": 2.532,
+      "torch_peak_reserved_gb": 2.544,
+      "peak_gpu_process_gb": 2.676,
+      "peak_gpu_device_used_gb": 3.155,
+      "peak_rss_gb": 4.921,
+      "layer_load_gb": 697.649,
+      "layer_load_s": 2043.97,
+      "layer_load_gbps": 0.341,
+      "layer_load_calls": 1568,
+      "to_device_s": 66.505,
+      "text": "A CPU cache is a small, high-speed memory buffer located directly on or very near the processor designed to bridge the speed gap between the fast CPU and the"
+    },
+    "warm": {
+      "prompt_tokens": 24,
+      "new_tokens": 32,
+      "total_s": 2557.775,
+      "ttft_s": 83.976,
+      "decode_s": 2473.776,
+      "decode_tok_per_s": 0.0125,
+      "s_per_decode_token": 79.799,
+      "torch_peak_allocated_gb": 2.532,
+      "torch_peak_reserved_gb": 2.544,
+      "peak_gpu_process_gb": 2.678,
+      "peak_gpu_device_used_gb": 3.155,
+      "peak_rss_gb": 4.659,
+      "layer_load_gb": 697.649,
+      "layer_load_s": 2472.029,
+      "layer_load_gbps": 0.282,
+      "layer_load_calls": 1568,
+      "to_device_s": 66.509,
+      "text": "A CPU cache is a small, high-speed memory buffer located directly on or very near the processor designed to bridge the speed gap between the fast CPU and the"
+    }
+  },
+  "env": {
+    "hostname_tag": "kaggle-t4",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+    "python": "3.13.16",
+    "cpu": "Intel(R) Xeon(R) CPU @ 2.00GHz",
+    "cpu_count": 4,
+    "ram_total_gb": 33.7,
+    "torch": "2.11.0+cu130",
+    "cuda_runtime": "13.0",
+    "transformers": "5.20.2",
+    "airllm": "4.0.0",
+    "bitsandbytes": "0.50.2",
+    "compressed_tensors": "0.20.1",
+    "gpu": "Tesla T4",
+    "gpu_vram_gb": 15.64,
+    "gpu_cc": "7.5",
+    "gpu_count": 2,
+    "bf16_native": false
+  },
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmarkac59eb628d v1 (per-token arrays and tracebacks omitted)"
+}

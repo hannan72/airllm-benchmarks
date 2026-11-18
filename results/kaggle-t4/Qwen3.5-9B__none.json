@@ -1,0 +1,93 @@
+{
+  "model": "Qwen3.5-9B",
+  "repo_id": "Qwen/Qwen3.5-9B",
+  "compression": "none",
+  "dtype_arg": "auto",
+  "max_new_tokens": 32,
+  "airllm_class": "AirLLMQwen3_5TextOnly",
+  "status": "ok",
+  "started": "2026-11-18T00:48:49",
+  "finished": "2026-11-18T01:55:00",
+  "running_dtype": "torch.bfloat16",
+  "prefetching": true,
+  "n_streamed_modules": 35,
+  "chat_template": true,
+  "phases": {
+    "stream_download": false,
+    "download_s": 0.14,
+    "convert_s": 125.55,
+    "split_preexisting": false,
+    "split_size_gb": 17.908,
+    "init_s": 2.07,
+    "init_torch_allocated_gb": 0,
+    "init_mem": {
+      "peak_rss_gb": 1.143,
+      "peak_gpu_process_gb": 0.023
+    },
+    "convert_mem": {
+      "peak_rss_gb": 8.861
+    }
+  },
+  "runs": {
+    "cold": {
+      "prompt_tokens": 24,
+      "new_tokens": 32,
+      "total_s": 1683.491,
+      "ttft_s": 67.532,
+      "decode_s": 1615.956,
+      "decode_tok_per_s": 0.0192,
+      "s_per_decode_token": 52.128,
+      "torch_peak_allocated_gb": 2.098,
+      "torch_peak_reserved_gb": 2.127,
+      "peak_gpu_process_gb": 2.261,
+      "peak_gpu_device_used_gb": 2.738,
+      "peak_rss_gb": 6.342,
+      "layer_load_gb": 573.045,
+      "layer_load_s": 1608.444,
+      "layer_load_gbps": 0.356,
+      "layer_load_calls": 1120,
+      "to_device_s": 53.415,
+      "text": "A CPU cache is a small, high-speed memory layer situated between the processor and the main RAM, designed to store frequently accessed data and instructions to minimize latency."
+    },
+    "warm": {
+      "prompt_tokens": 24,
+      "new_tokens": 32,
+      "total_s": 2150.96,
+      "ttft_s": 51.9,
+      "decode_s": 2099.056,
+      "decode_tok_per_s": 0.0148,
+      "s_per_decode_token": 67.711,
+      "torch_peak_allocated_gb": 2.098,
+      "torch_peak_reserved_gb": 2.127,
+      "peak_gpu_process_gb": 2.261,
+      "peak_gpu_device_used_gb": 2.738,
+      "peak_rss_gb": 6.038,
+      "layer_load_gb": 573.045,
+      "layer_load_s": 2078.015,
+      "layer_load_gbps": 0.276,
+      "layer_load_calls": 1120,
+      "to_device_s": 53.269,
+      "text": "A CPU cache is a small, high-speed memory layer situated between the processor and the main RAM, designed to store frequently accessed data and instructions to minimize latency."
+    }
+  },
+  "env": {
+    "hostname_tag": "kaggle-t4",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+    "python": "3.13.16",
+    "cpu": "Intel(R) Xeon(R) CPU @ 2.00GHz",
+    "cpu_count": 4,
+    "ram_total_gb": 33.7,
+    "torch": "2.11.0+cu130",
+    "cuda_runtime": "13.0",
+    "transformers": "5.20.2",
+    "airllm": "4.0.0",
+    "bitsandbytes": "0.50.2",
+    "compressed_tensors": "0.20.1",
+    "gpu": "Tesla T4",
+    "gpu_vram_gb": 15.64,
+    "gpu_cc": "7.5",
+    "gpu_count": 2,
+    "bf16_native": false
+  },
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmarkac59eb628d v1 (per-token arrays and tracebacks omitted)"
+}

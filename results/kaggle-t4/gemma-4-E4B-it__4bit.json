@@ -1,0 +1,93 @@
+{
+  "model": "gemma-4-E4B-it",
+  "repo_id": "google/gemma-4-E4B-it",
+  "compression": "4bit",
+  "dtype_arg": "auto",
+  "max_new_tokens": 32,
+  "airllm_class": "AirLLMGemma4",
+  "status": "ok",
+  "started": "2026-11-18T00:02:11",
+  "finished": "2026-11-18T00:17:36",
+  "running_dtype": "torch.bfloat16",
+  "prefetching": false,
+  "n_streamed_modules": 43,
+  "chat_template": true,
+  "phases": {
+    "stream_download": false,
+    "download_s": 81.48,
+    "convert_s": 99.91,
+    "split_preexisting": false,
+    "split_size_gb": 8.281,
+    "init_s": 4.44,
+    "init_torch_allocated_gb": 1.397,
+    "init_mem": {
+      "peak_rss_gb": 1.758,
+      "peak_gpu_process_gb": 0.587
+    },
+    "convert_mem": {
+      "peak_rss_gb": 6.772
+    }
+  },
+  "runs": {
+    "cold": {
+      "prompt_tokens": 20,
+      "new_tokens": 32,
+      "total_s": 369.966,
+      "ttft_s": 14.384,
+      "decode_s": 355.58,
+      "decode_tok_per_s": 0.0872,
+      "s_per_decode_token": 11.47,
+      "torch_peak_allocated_gb": 1.626,
+      "torch_peak_reserved_gb": 1.667,
+      "peak_gpu_process_gb": 1.801,
+      "peak_gpu_device_used_gb": 2.275,
+      "peak_rss_gb": 1.864,
+      "layer_load_gb": 72.032,
+      "layer_load_s": 30.256,
+      "layer_load_gbps": 2.381,
+      "layer_load_calls": 1376,
+      "to_device_s": 2.125,
+      "text": "pages page continues pagepsagesegalesagesurécocesagesuragesurdemifiezages...each pagepezages_pagesizeagesagesurdemer"
+    },
+    "warm": {
+      "prompt_tokens": 20,
+      "new_tokens": 32,
+      "total_s": 365.988,
+      "ttft_s": 11.522,
+      "decode_s": 354.464,
+      "decode_tok_per_s": 0.0875,
+      "s_per_decode_token": 11.434,
+      "torch_peak_allocated_gb": 1.626,
+      "torch_peak_reserved_gb": 1.667,
+      "peak_gpu_process_gb": 1.801,
+      "peak_gpu_device_used_gb": 2.275,
+      "peak_rss_gb": 1.852,
+      "layer_load_gb": 72.032,
+      "layer_load_s": 29.77,
+      "layer_load_gbps": 2.42,
+      "layer_load_calls": 1376,
+      "to_device_s": 2.113,
+      "text": "pages page continues pagepsagesegalesagesurécocesagesuragesurdemifiezages...each pagepezages_pagesizeagesagesurdemer"
+    }
+  },
+  "env": {
+    "hostname_tag": "kaggle-t4",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+    "python": "3.13.16",
+    "cpu": "Intel(R) Xeon(R) CPU @ 2.00GHz",
+    "cpu_count": 4,
+    "ram_total_gb": 33.7,
+    "torch": "2.11.0+cu130",
+    "cuda_runtime": "13.0",
+    "transformers": "5.20.2",
+    "airllm": "4.0.0",
+    "bitsandbytes": "0.50.2",
+    "compressed_tensors": "0.20.1",
+    "gpu": "Tesla T4",
+    "gpu_vram_gb": 15.64,
+    "gpu_cc": "7.5",
+    "gpu_count": 2,
+    "bf16_native": false
+  },
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmarkac59eb628d v1 (per-token arrays and tracebacks omitted)"
+}

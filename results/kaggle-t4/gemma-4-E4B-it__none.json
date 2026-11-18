@@ -1,0 +1,93 @@
+{
+  "model": "gemma-4-E4B-it",
+  "repo_id": "google/gemma-4-E4B-it",
+  "compression": "none",
+  "dtype_arg": "auto",
+  "max_new_tokens": 32,
+  "airllm_class": "AirLLMGemma4",
+  "status": "ok",
+  "started": "2026-11-18T00:17:50",
+  "finished": "2026-11-18T00:33:11",
+  "running_dtype": "torch.bfloat16",
+  "prefetching": true,
+  "n_streamed_modules": 43,
+  "chat_template": true,
+  "phases": {
+    "stream_download": false,
+    "download_s": 0.14,
+    "convert_s": 113.5,
+    "split_preexisting": false,
+    "split_size_gb": 15.036,
+    "init_s": 14.97,
+    "init_torch_allocated_gb": 1.397,
+    "init_mem": {
+      "peak_rss_gb": 4.867,
+      "peak_gpu_process_gb": 1.514
+    },
+    "convert_mem": {
+      "peak_rss_gb": 6.574
+    }
+  },
+  "runs": {
+    "cold": {
+      "prompt_tokens": 20,
+      "new_tokens": 32,
+      "total_s": 405.09,
+      "ttft_s": 26.195,
+      "decode_s": 378.893,
+      "decode_tok_per_s": 0.0818,
+      "s_per_decode_token": 12.222,
+      "torch_peak_allocated_gb": 1.626,
+      "torch_peak_reserved_gb": 1.644,
+      "peak_gpu_process_gb": 1.778,
+      "peak_gpu_device_used_gb": 2.256,
+      "peak_rss_gb": 4.428,
+      "layer_load_gb": 256.059,
+      "layer_load_s": 359.7,
+      "layer_load_gbps": 0.712,
+      "layer_load_calls": 1376,
+      "to_device_s": 26.547,
+      "text": "A CPU cache is a small, extremely fast memory located close to the CPU core that stores frequently accessed data and instructions from the slower main memory (RAM). When"
+    },
+    "warm": {
+      "prompt_tokens": 20,
+      "new_tokens": 32,
+      "total_s": 386.354,
+      "ttft_s": 12.111,
+      "decode_s": 374.241,
+      "decode_tok_per_s": 0.0828,
+      "s_per_decode_token": 12.072,
+      "torch_peak_allocated_gb": 1.626,
+      "torch_peak_reserved_gb": 1.646,
+      "peak_gpu_process_gb": 1.78,
+      "peak_gpu_device_used_gb": 2.258,
+      "peak_rss_gb": 4.374,
+      "layer_load_gb": 256.059,
+      "layer_load_s": 343.807,
+      "layer_load_gbps": 0.745,
+      "layer_load_calls": 1376,
+      "to_device_s": 26.476,
+      "text": "A CPU cache is a small, extremely fast memory located close to the CPU core that stores frequently accessed data and instructions from the slower main memory (RAM). When"
+    }
+  },
+  "env": {
+    "hostname_tag": "kaggle-t4",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+    "python": "3.13.16",
+    "cpu": "Intel(R) Xeon(R) CPU @ 2.00GHz",
+    "cpu_count": 4,
+    "ram_total_gb": 33.7,
+    "torch": "2.11.0+cu130",
+    "cuda_runtime": "13.0",
+    "transformers": "5.20.2",
+    "airllm": "4.0.0",
+    "bitsandbytes": "0.50.2",
+    "compressed_tensors": "0.20.1",
+    "gpu": "Tesla T4",
+    "gpu_vram_gb": 15.64,
+    "gpu_cc": "7.5",
+    "gpu_count": 2,
+    "bf16_native": false
+  },
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmarkac59eb628d v1 (per-token arrays and tracebacks omitted)"
+}

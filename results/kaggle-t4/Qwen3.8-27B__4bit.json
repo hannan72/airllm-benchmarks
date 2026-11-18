@@ -1,0 +1,40 @@
+{
+  "model": "Qwen3.8-27B",
+  "repo_id": "Qwen/Qwen3.8-27B",
+  "compression": "4bit",
+  "dtype_arg": "auto",
+  "max_new_tokens": 16,
+  "airllm_class": "AirLLMQwen3_5TextOnly",
+  "status": "error",
+  "started": "2026-11-18T03:43:17",
+  "finished": "2026-11-18T03:43:17",
+  "error_phase": "convert",
+  "error": "OSError: [Errno 30] Read-only file system: '/tmp/hf/hub/models--Qwen--Qwen3.8-27B'",
+  "phases": {
+    "stream_download": true,
+    "download_s": 0,
+    "init_mem": {},
+    "convert_mem": {}
+  },
+  "runs": {},
+  "env": {
+    "hostname_tag": "kaggle-t4",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+    "python": "3.13.16",
+    "cpu": "Intel(R) Xeon(R) CPU @ 2.00GHz",
+    "cpu_count": 4,
+    "ram_total_gb": 33.7,
+    "torch": "2.11.0+cu130",
+    "cuda_runtime": "13.0",
+    "transformers": "5.20.2",
+    "airllm": "4.0.0",
+    "bitsandbytes": "0.50.2",
+    "compressed_tensors": "0.20.1",
+    "gpu": "Tesla T4",
+    "gpu_vram_gb": 15.64,
+    "gpu_cc": "7.5",
+    "gpu_count": 2,
+    "bf16_native": false
+  },
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmarkac59eb628d v1 (per-token arrays and tracebacks omitted)"
+}

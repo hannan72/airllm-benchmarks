@@ -1,0 +1,93 @@
+{
+  "model": "gemma-4-12B-it",
+  "repo_id": "google/gemma-4-12B-it",
+  "compression": "4bit",
+  "dtype_arg": "auto",
+  "max_new_tokens": 32,
+  "airllm_class": "AirLLMGemma4",
+  "status": "ok",
+  "started": "2026-11-18T01:55:39",
+  "finished": "2026-11-18T02:17:07",
+  "running_dtype": "torch.bfloat16",
+  "prefetching": false,
+  "n_streamed_modules": 49,
+  "chat_template": true,
+  "phases": {
+    "stream_download": false,
+    "download_s": 118.86,
+    "convert_s": 134.85,
+    "split_preexisting": false,
+    "split_size_gb": 6.698,
+    "init_s": 6.24,
+    "init_torch_allocated_gb": 2.013,
+    "init_mem": {
+      "peak_rss_gb": 1.87,
+      "peak_gpu_process_gb": 0.797
+    },
+    "convert_mem": {
+      "peak_rss_gb": 3.553
+    }
+  },
+  "runs": {
+    "cold": {
+      "prompt_tokens": 24,
+      "new_tokens": 32,
+      "total_s": 523.034,
+      "ttft_s": 29.218,
+      "decode_s": 493.816,
+      "decode_tok_per_s": 0.0628,
+      "s_per_decode_token": 15.93,
+      "torch_peak_allocated_gb": 2.544,
+      "torch_peak_reserved_gb": 2.586,
+      "peak_gpu_process_gb": 2.699,
+      "peak_gpu_device_used_gb": 3.172,
+      "peak_rss_gb": 1.836,
+      "layer_load_gb": 196.228,
+      "layer_load_s": 77.889,
+      "layer_load_gbps": 2.519,
+      "layer_load_calls": 1568,
+      "to_device_s": 2.414,
+      "text": " चित्रों चित्रों चित्रों चित्रों चित्रों चित्रों februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari Religion Religion Religion Religion Religion Religion Religion Religion"
+    },
+    "warm": {
+      "prompt_tokens": 24,
+      "new_tokens": 32,
+      "total_s": 503.916,
+      "ttft_s": 15.961,
+      "decode_s": 487.954,
+      "decode_tok_per_s": 0.0635,
+      "s_per_decode_token": 15.74,
+      "torch_peak_allocated_gb": 2.544,
+      "torch_peak_reserved_gb": 2.586,
+      "peak_gpu_process_gb": 2.699,
+      "peak_gpu_device_used_gb": 3.172,
+      "peak_rss_gb": 1.759,
+      "layer_load_gb": 196.228,
+      "layer_load_s": 66.471,
+      "layer_load_gbps": 2.952,
+      "layer_load_calls": 1568,
+      "to_device_s": 2.35,
+      "text": " चित्रों चित्रों चित्रों चित्रों चित्रों चित्रों februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari februari Religion Religion Religion Religion Religion Religion Religion Religion"
+    }
+  },
+  "env": {
+    "hostname_tag": "kaggle-t4",
+    "platform": "Linux-6.18.55+-x86_64-with-glibc2.39",
+    "python": "3.13.16",
+    "cpu": "Intel(R) Xeon(R) CPU @ 2.00GHz",
+    "cpu_count": 4,
+    "ram_total_gb": 33.7,
+    "torch": "2.11.0+cu130",
+    "cuda_runtime": "13.0",
+    "transformers": "5.20.2",
+    "airllm": "4.0.0",
+    "bitsandbytes": "0.50.2",
+    "compressed_tensors": "0.20.1",
+    "gpu": "Tesla T4",
+    "gpu_vram_gb": 15.64,
+    "gpu_cc": "7.5",
+    "gpu_count": 2,
+    "bf16_native": false
+  },
+  "source": "Kaggle notebook hannankomari/airllm-t4-benchmarkac59eb628d v1 (per-token arrays and tracebacks omitted)"
+}
