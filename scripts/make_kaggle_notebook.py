@@ -7,11 +7,16 @@ Accelerator "GPU T4 x2", turn Internet on, then "Save Version > Save & Run All".
 The final cell prints every result JSON, so results can be read from the version log.
 """
 
+import argparse
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-BENCH_FILES = ["airllm_compat.py", "airllm_gemma4.py", "models.py", "run_bench.py", "run_matrix.py"]
+BENCH_FILES = ["airllm_compat.py", "airllm_gemma4.py", "models.py", "lazy_split.py", "run_bench.py", "run_matrix.py"]
+ap = argparse.ArgumentParser()
+ap.add_argument("--plan", default="kaggle", help="plan name in bench/run_matrix.py")
+ap.add_argument("--out", default="kaggle/airllm_t4_benchmark.ipynb")
+ARGS = ap.parse_args()
 
 
 def code(src):
@@ -55,8 +60,8 @@ cells += [
          "print('scratch:', SCRATCH, round(shutil.disk_usage(SCRATCH).free / 1e9), 'GB free')\n"
          "os.environ['HF_HOME'] = f'{SCRATCH}/hf'\n"
          "os.environ['BENCH_HOST_TAG'] = 'kaggle-t4'\n"
-         "!python bench/run_matrix.py --plan kaggle --out-dir results/kaggle-t4 --work-dir {SCRATCH}/airllm-work "
-         "--cleanup --no-prefetch --no-wait-gpu --timeout-min 150"),
+         f"!python bench/run_matrix.py --plan {ARGS.plan} --out-dir results/kaggle-t4 --work-dir {{SCRATCH}}/airllm-work "
+         "--cleanup --no-prefetch --no-wait-gpu --timeout-min 300"),
     code("import json, glob\n"
          "for f in sorted(glob.glob('/kaggle/working/airllm-benchmarks/results/kaggle-t4/*.json')):\n"
          "    r = json.load(open(f))\n"
@@ -84,7 +89,7 @@ nb = {
     "nbformat": 4,
     "nbformat_minor": 5,
 }
-out = ROOT / "kaggle" / "airllm_t4_benchmark.ipynb"
+out = ROOT / ARGS.out
 out.parent.mkdir(exist_ok=True)
 out.write_text(json.dumps(nb, indent=1))
 print(f"wrote {out} ({out.stat().st_size / 1e3:.0f} kB, {len(cells)} cells)")

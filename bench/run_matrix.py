@@ -62,13 +62,15 @@ PLANS = {
     # Kaggle run 2: v1 lost the >25B models to the scratch-disk quota (streaming a 49.9 GB shard).
     # Split them straight from the Hub (byte ranges; no checkpoint on disk) and add tuned variants.
     "kaggle2": [
-        ("gemma-4-26B-A4B-it", ["4bit", "4bit-2d:nogc"], 16, ["--lazy-split"]),
-        ("Qwen3.6-27B", ["4bit", "4bit-2d:nogc"], 16, ["--lazy-split"]),
-        ("Qwen3.8-27B", ["4bit", "4bit-2d:nogc"], 16, ["--lazy-split"]),
+        # Qwen 27B shards are ~3.7 GB, so AirLLM's own shard streaming fits the quota
+        ("Qwen3.6-27B", ["4bit", "4bit-2d:nogc"], 16, ["--stream-download", "--delete-original"]),
+        ("Qwen3.8-27B", ["4bit", "4bit-2d:nogc"], 16, ["--stream-download", "--delete-original"]),
         ("gemma-4-E2B-it-qat-mobile-ct", ["none:nogc"], 32, []),
         ("gemma-4-E4B-it", ["4bit-2d:nogc"], 32, []),
         ("Qwen3.5-9B", ["4bit-2d:nogc"], 32, []),
         ("gemma-4-12B-it", ["4bit-2d:nogc"], 32, []),
+        # 49.9 GB single shard: split straight from the Hub by byte ranges (never on disk)
+        ("gemma-4-26B-A4B-it", ["4bit-2d:nogc"], 16, ["--lazy-split"]),
     ],
 }
 

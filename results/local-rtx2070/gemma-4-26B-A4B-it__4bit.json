@@ -7,8 +7,8 @@
   "max_new_tokens": 16,
   "prompt": "Explain how a CPU cache works in one short paragraph.",
   "airllm_class": "AirLLMGemma4",
-  "status": "error",
-  "started": "2026-11-18T04:26:36",
+  "status": "running",
+  "started": "2026-11-18T05:04:52",
   "env": {
     "hostname_tag": "local-rtx2070",
     "platform": "Linux-7.0.0-42-generic-x86_64-with-glibc2.39",
@@ -30,11 +30,76 @@
   },
   "phases": {
     "stream_download": false,
-    "download_s": 1677.12
+    "download_s": 0.41,
+    "lazy_split": {
+      "layers": 32,
+      "bytes_read": 50466283580,
+      "seconds": 109.14985632896423,
+      "sources": [
+        "local"
+      ]
+    },
+    "convert_s": 109.79,
+    "split_preexisting": false,
+    "split_size_gb": 14.194,
+    "convert_mem": {
+      "peak_rss_gb": 9.211,
+      "peak_gpu_device_used_gb": 2.584,
+      "peak_gpu_process_gb": 2.028,
+      "other_gpu_pids_seen": []
+    },
+    "init_s": 4.43,
+    "init_mem": {
+      "peak_rss_gb": 1.658,
+      "peak_gpu_device_used_gb": 2.584,
+      "peak_gpu_process_gb": 2.028,
+      "other_gpu_pids_seen": []
+    },
+    "init_torch_allocated_gb": 1.476
   },
-  "runs": {},
-  "error_phase": "convert",
-  "error": "RuntimeError: unable to mmap 49907246508 bytes from file </home/hannan/.cache/huggingface/hub/models--google--gemma-4-26B-A4B-it/snapshots/4d7ae4984b7db7de8f8457170b3f1a419ee76d52/model-00001-of-00002.safetensors>: Cannot allocate memory (12)",
-  "traceback": "Traceback (most recent call last):\n  File \"/home/hannan/Documents/Public _repositories/airllm-benchmarks/bench/run_bench.py\", line 405, in main\n    find_or_create_local_splitted_path(repo_id, str(layers_root), compression=compression,\n  File \"/home/hannan/Documents/Public _repositories/airllm-benchmarks/.venv/lib/python3.12/site-packages/airllm/utils.py\", line 868, in find_or_create_local_splitted_path\n    return Path(hf_cache_path), split_and_save_layers(hf_cache_path, layer_shards_saving_path,\n                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hannan/Documents/Public _repositories/airllm-benchmarks/.venv/lib/python3.12/site-packages/airllm/utils.py\", line 740, in split_and_save_layers\n    loaded = load_file(to_load, device='cpu')\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/home/hannan/Documents/Public _repositories/airllm-benchmarks/.venv/lib/python3.12/site-packages/safetensors/torch.py\", line 359, in load_file\n    with safe_open(filename, framework=\"pt\", device=device, backend=backend) as f:\n         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nRuntimeError: unable to mmap 49907246508 bytes from file </home/hannan/.cache/huggingface/hub/models--google--gemma-4-26B-A4B-it/snapshots/4d7ae4984b7db7de8f8457170b3f1a419ee76d52/model-00001-of-00002.safetensors>: Cannot allocate memory (12)\n",
-  "finished": "2026-11-18T04:54:34"
+  "runs": {
+    "cold": {
+      "prompt_tokens": 24,
+      "new_tokens": 16,
+      "total_s": 235.065,
+      "ttft_s": 16.457,
+      "decode_s": 218.599,
+      "decode_tok_per_s": 0.0686,
+      "s_per_decode_token": 14.573,
+      "end_to_end_tok_per_s": 0.0681,
+      "per_token_s": [
+        15.2136,
+        14.6338,
+        14.349,
+        14.3427,
+        14.3441,
+        14.6992,
+        14.5589,
+        14.5458,
+        14.4265,
+        14.4562,
+        14.5038,
+        14.6451,
+        14.552,
+        14.5471,
+        14.7808
+      ],
+      "torch_peak_allocated_gb": 3.294,
+      "torch_peak_reserved_gb": 3.328,
+      "text": " l de de de de de de de de de de de de de de de",
+      "layer_load_s": 157.717,
+      "layer_load_gb": 220.462,
+      "layer_load_calls": 496,
+      "layer_load_gbps": 1.398,
+      "to_device_s": 1.347,
+      "peak_rss_gb": 2.314,
+      "peak_gpu_device_used_gb": 4.012,
+      "peak_gpu_process_gb": 3.456,
+      "other_gpu_pids_seen": []
+    }
+  },
+  "running_dtype": "torch.bfloat16",
+  "prefetching": false,
+  "n_streamed_modules": 31,
+  "chat_template": true
 }

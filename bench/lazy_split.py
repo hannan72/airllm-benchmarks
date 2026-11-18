@@ -53,6 +53,51 @@ def _open_shard(repo_id, filename, revision=None):
         return fs.open(f"{repo_id}{rev}/{filename}", "rb", block_size=0), "remote"
 
 
+def _iter_ranges(f, where, data_start, items, repo_id, filename, revision=None, workers=8):
+    """Yield (key, meta, bytes) in order. Remote: ``workers`` concurrent range requests
+    (one HTTP stream to the Hub tops out at a few MB/s); at most ``workers`` tensors in flight."""
+    if where == "local":
+        for key, meta in items:
+            start, end = meta["data_offsets"]
+            f.seek(data_start + start)
+            yield key, meta, bytearray(f.read(end - start)) if end > start else bytearray()
+        return
+
+    from collections import deque
+    from concurrent.futures import ThreadPoolExecutor
+
+    from huggingface_hub import HfFileSystem
+
+    fs = HfFileSystem()
+    path = f"{repo_id}{'@' + revision if revision else ''}/{filename}"
+
+    def fetch(meta):
+        start, end = meta["data_offsets"]
+        if end <= start:
+            return bytearray()
+        for attempt in range(5):
+            try:
+                return bytearray(fs.cat_file(path, start=data_start + start, end=data_start + end))
+            except Exception:  # noqa: BLE001 - transient network errors
+                if attempt == 4:
+                    raise
+                time.sleep(2 ** attempt)
+
+    with ThreadPoolExecutor(workers) as pool:
+        window = deque()
+        it = iter(items)
+        for key, meta in it:
+            window.append((key, meta, pool.submit(fetch, meta)))
+            if len(window) >= workers:
+                break
+        while window:
+            key, meta, fut = window.popleft()
+            nxt = next(it, None)
+            if nxt is not None:
+                window.append((nxt[0], nxt[1], pool.submit(fetch, nxt[1])))
+            yield key, meta, fut.result()
+
+
 def _layer_list(layer_names, keys):
     from airllm.utils import cpu_resident_module_names, layer_owner
 
@@ -106,10 +151,8 @@ def lazy_split(repo_id, layers_root, layer_names, compression=None, revision=Non
         items = sorted(((k, v) for k, v in header.items() if owner_of.get(k) in todo),
                        key=lambda kv: kv[1]["data_offsets"][0])
         log(f"[lazy_split] {shard} ({where}): {len(items)} tensors for {len({owner_of[k] for k, _ in items})} layers")
-        for key, meta in items:
+        for key, meta, buf in _iter_ranges(f, where, data_start, items, repo_id, shard, revision):
             start, end = meta["data_offsets"]
-            f.seek(data_start + start)
-            buf = bytearray(f.read(end - start)) if end > start else bytearray()
             bytes_read += end - start
             dtype = _DTYPES[meta["dtype"]]
             t = torch.frombuffer(buf, dtype=dtype) if buf else torch.empty(0, dtype=dtype)
