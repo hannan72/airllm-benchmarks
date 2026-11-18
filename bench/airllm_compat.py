@@ -149,3 +149,34 @@ _utils.uncompress_layer_state_dict = _uncompress_mixed
 
 if _os.environ.get("AIRLLM_NO_GC") == "1":
     _base.clean_memory = lambda: None
+
+
+# --- disk-space check: AirLLM divides by the 4-bit size ratio instead of multiplying ----------
+#
+# ``check_space`` estimates the split size of a 4-bit model as ``checkpoint_bytes / 0.2813``,
+# i.e. 3.6x the checkpoint instead of 0.28x, and refuses to split a 52 GB model with 183 GB free.
+# (The 8-bit branch, ``// 2``, is in the right direction.) Re-implemented with the ratio applied.
+
+import shutil as _shutil
+from glob import glob as _glob
+from pathlib import Path as _Path
+
+
+def _check_space_fixed(checkpoint_path, layer_shards_saving_path=None, compression=None,
+                       splitted_model_dir_name="splitted_model"):
+    total = sum(_os.path.getsize(f) for f in _glob(str(_Path(checkpoint_path) / "*")) if _os.path.isfile(f))
+    reusable = 0
+    if layer_shards_saving_path is not None:
+        reusable = sum(_os.path.getsize(f) for f in
+                       _glob(str(_Path(layer_shards_saving_path) / splitted_model_dir_name / "*")))
+    if compression == "4bit":
+        total = int(total * 0.2813)
+    elif compression == "8bit":
+        total = total // 2
+    free = _shutil.disk_usage(checkpoint_path if layer_shards_saving_path is None else layer_shards_saving_path).free
+    if free + reusable < total:
+        raise _utils.NotEnoughSpaceException(
+            f"Not enough space: {free / 2**30:.1f} GB free, split needs ~{total / 2**30:.1f} GB")
+
+
+_utils.check_space = _check_space_fixed
