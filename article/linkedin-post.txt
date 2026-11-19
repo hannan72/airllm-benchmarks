@@ -1,30 +1,31 @@
-Can you run a 27B-parameter LLM on an 8 GB laptop GPU?
+🚀 Can you run a 27B-parameter LLM on an 8 GB laptop GPU?
 
 Yes, with AirLLM. I benchmarked how well it works.
 
-7 open models (Gemma 4 and Qwen 3.x, 2B to 27B parameters) on:
-• my RTX 2070 laptop (Linux)
-• my GTX 1070 laptop (Windows 11)
-• a free Tesla T4 notebook on Kaggle
+🧪 7 open models (Gemma 4 and Qwen 3.x, 2B to 27B parameters) on:
+💻 my RTX 2070 laptop (Linux)
+💻 my GTX 1070 laptop (Windows 11)
+☁️ a free Tesla T4 notebook on Kaggle
 
-What I found:
+🔍 What I found:
 
-→ Every model runs. The 27B ones need only 3.7 GB of VRAM, because AirLLM streams the model one layer at a time.
+✅ Every model runs. The 27B ones need only 3.7 GB of VRAM, because AirLLM streams the model one layer at a time.
 
-→ Out of the box it does 0.01–0.16 tokens/s, and its 4-bit mode turns Gemma 4 into gibberish.
+⚠️ Out of the box it does 0.01–0.16 tokens/s, and its 4-bit mode turns Gemma 4 into gibberish.
 
-→ Two small fixes make it 2–38× faster: NF4 on the weight matrices only, and no gc.collect() after every layer.
+⚡ Two small fixes make it 2–38× faster: NF4 on the weight matrices only, and no gc.collect() after every layer.
 
-→ Free RAM matters more than the GPU. The 27B models ran 2.5× faster on Kaggle's T4 than on my faster laptop, because there their 15 GB of layer files fit in the page cache.
+🧠 Free RAM matters more than the GPU. The 27B models ran 2.5× faster on Kaggle's T4 than on my faster laptop, because there their 15 GB of layer files fit in the page cache.
 
-→ Even a Pascal-era GTX 1070 runs all seven models.
+🐢 Even a Pascal-era GTX 1070 runs all seven models.
 
-→ For comparison, vLLM on an A100 or H100 (Modal) runs the same models 57–545× faster, because the whole model sits in GPU memory.
+🏎️ For comparison, vLLM on an A100 or H100 (Modal) runs the same models 57–545× faster, because the whole model sits in GPU memory.
 
-→ Plan for minutes per answer: 2–4 minutes for 200 tokens from a model up to 12B, 16–41 minutes from a 27B.
+⏱️ Plan for minutes per answer: 2–4 minutes for 200 tokens from a model up to 12B, 16–41 minutes from a 27B.
 
-AirLLM lets a laptop run models that do not fit its GPU. It is for batch jobs and experiments, not for chat.
+💡 AirLLM lets a laptop run models that do not fit its GPU. It is for batch jobs and experiments, not for chat.
 
-Full write-up with charts and the code: [link to the article]
+📖 Full write-up with charts: https://medium.com/@komari.hannan/running-a-27b-llm-on-an-8-gb-laptop-gpu-with-airllm-b80b5112fb65
+💾 Code and raw results: https://github.com/hannan72/airllm-benchmarks
 
 #LLM #AirLLM #LocalLLM #GPU #MachineLearning

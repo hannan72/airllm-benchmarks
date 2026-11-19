@@ -5,7 +5,7 @@
  "cuda_runtime": "12.6",
  "cuda_available": true,
  "ram_total_gb": 34.2,
- "hf_cache": "C:\\Users\\Zahra\\.cache\\huggingface\\hub",
+ "hf_cache": "~\\.cache\\huggingface\\hub",
  "hf_cache_disk_free_gb": 301.8,
  "gpu": "NVIDIA GeForce GTX 1070 with Max-Q Design",
  "gpu_vram_gb": 8.59,

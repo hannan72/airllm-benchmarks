@@ -27,7 +27,8 @@ def preflight(out):
         p = Path(constants.HF_HUB_CACHE)
         while not p.exists() and p != p.parent:
             p = p.parent
-        info["hf_cache"] = constants.HF_HUB_CACHE
+        # results are committed: replace the user's home folder so the account name is not published
+        info["hf_cache"] = str(constants.HF_HUB_CACHE).replace(str(Path.home()), "~")
         info["hf_cache_disk_free_gb"] = round(shutil.disk_usage(p).free / 1e9, 1)
     except Exception as e:  # noqa: BLE001
         info["hf_cache"] = f"? {e}"
