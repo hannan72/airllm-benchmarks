@@ -31,9 +31,9 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
   **0.5–1.6 tok/s** and the 26–27B models **0.08–0.4 tok/s**, with correct output. The 27B speed
   depends on whether the 15 GB of 4-bit layer files fit in free RAM (page cache).
 * **The older Windows laptop (GTX 1070) is 2.8–4.7× slower** than the RTX 2070 for the ≤ 26B models
-  (0.08–0.50 tok/s tuned). It reads the cached layer files at only 1.5–1.9 GB/s, and its Pascal GPU
-  spends 3.6–11× longer on the rest of each token. It edges out the RTX 2070 on the 27B models
-  (0.09 vs 0.08 tok/s), because their layer files fit in its free RAM.
+  (0.08–0.50 tok/s tuned). Its layer files load at only 1.5–1.9 GB/s, and the rest of each token
+  (GPU compute and overhead) takes 3–11× longer. It edges out the RTX 2070 on the 27B models
+  (0.09 vs 0.08 tok/s), because it keeps that read speed while the RTX 2070 laptop falls back to its NVMe.
 * Even tuned, AirLLM streams the **whole model (≈ 15 GB for a 4-bit 27B) for every token**, so it
   is a way to *run* a model that does not fit in VRAM, not a way to chat with it interactively.
   The MoE model (26B-A4B) gets no benefit from sparsity: all 128 experts are streamed per layer.
@@ -41,7 +41,7 @@ Models: `google/gemma-4-E2B-it-qat-mobile-ct`, `google/gemma-4-E4B-it`, `Qwen/Qw
   decode at **49–255 tok/s** for one request, 110–540× the best tuned AirLLM number, and at
   1,300–6,600 tok/s across 32 concurrent requests. An **A100** does 29–238 tok/s (80 GB, bf16) or
   39–227 tok/s (40 GB, fp8 for the 26–27B models). Plain transformers on a free Hugging Face ZeroGPU
-  slice (RTX PRO 6000 Blackwell) manages 16–31 tok/s. The A100 / H100 runs on Modal used $9.40 of
+  slice (RTX PRO 6000 Blackwell) manages 16–31 tok/s. The A100 / H100 runs on Modal used $8.55 of
   Modal's free monthly credit ([Bigger GPUs](#bigger-gpus-deploy-directly)).
 
 ![decode speed](results/speed.png)
@@ -120,12 +120,13 @@ the whole-GPU peak, desktop included. Full tables: [Results](#full-results).
    bf16 on this Pascal laptop GPU (PyTorch 2.14.1 + CUDA 12.6, the newest build that still ships sm_61 kernels).
    They are 2.8–4.7× slower than on the RTX 2070 laptop for the ≤ 26B models. Two things add up.
    First, the 4-bit layer files load at 1.5–1.9 GB/s, against 5.4–6.7 GB/s from the Linux page cache
-   (≈ 70 % of each token). Second, the GPU math, dequantization and hooks take 3.6–11× longer
+   (≈ 70 % of each token). Second, the GPU math, dequantization and hooks take 3–11× longer
    (e.g. 1.4 vs 0.17 s per token for Gemma-4-12B). With one machine per OS, the Windows and Pascal
    effects cannot be separated. NF4 still pays off: 2.4–4.9× faster than bf16 (both without gc).
-   For the 27B models the order flips. Their 15 GB of layer files fit in the Windows laptop's
-   34 GB of RAM, but on the RTX 2070 laptop they come from the NVMe at 1.3 GB/s, so the GTX 1070 is
-   slightly faster: 0.09 vs 0.08 tok/s.
+   For the 27B models the order flips. The Windows laptop reads their 15 GB of layer files at the
+   same 1.9 GB/s (most likely from its file cache: 34 GB of RAM, nothing else running; not verified),
+   but on the RTX 2070 laptop they come from the NVMe at 1.3 GB/s, so the GTX 1070 is slightly
+   faster: 0.09 vs 0.08 tok/s.
 
 **Perspective.** E2B/E4B/9B/12B fit entirely in 8 GB of VRAM at 4-bit, so a normal runtime (e.g.
 transformers + bitsandbytes or llama.cpp) would run them one to two orders of magnitude faster than
@@ -209,8 +210,8 @@ weights everywhere:
   load in transformers 5.23: its scalar activation scales do not match the `[1]`-shaped module
   parameters; only the AirLLM path here (which re-adds them) and vLLM run it.
 * **Modal practicalities.** The free Starter plan includes $30 of compute a month, but GPU functions
-  need a card on the account. The whole sweep metered $9.40, including failed attempts and one
-  run stopped midway, and was all covered by the credits: about $2.00 (H100), $1.60 (A100 80 GB) and
+  need a card on the account. The whole sweep metered $8.55 (Modal's billing summary on
+  2026-11-19; it showed $9.40 the day before), including failed attempts and one run stopped midway, and was all covered by the credits: about $2.00 (H100), $1.60 (A100 80 GB) and
   $1.40 (A100 40 GB) of GPU time for the final runs, about $0.17–0.42 per model. CPU containers copied
   the ≈ 225 GB of checkpoints into a Modal Volume in under 4 minutes. Requests for an `A100-40GB` sometimes
   landed on an 80 GB card, and Modal has no way to pin it, so the runner checks the GPU and retries.

@@ -5,3 +5,4 @@ logs/
 results/smoke/
 *.safetensors
 build/
+article/figures/src/
