@@ -1,16 +1,16 @@
 ### Decode tok/s by GPU
 
-| Model | RTX 2070 8 GB<br>AirLLM tuned | T4 16 GB<br>AirLLM tuned | ZeroGPU RTX PRO 6000<br>transformers bf16 | A100 40 GB<br>vLLM | A100 80 GB<br>vLLM bf16 | H100 80 GB<br>vLLM bf16 |
-|---|---|---|---|---|---|---|
-| gemma-4-E2B-it-qat-mobile-ct | 0.90 | 0.78 | fails to load | 226.7 | 237.9 | 254.6 |
-| gemma-4-E4B-it | 1.55 | 0.97 | 23.7 | 98.8 | 116.5 | 175.6 |
-| Qwen3.5-9B | 1.05 | 0.59 | 30.6 | 73.3 | 88.1 | 150.1 |
-| gemma-4-12B-it | 0.85 | 0.47 | 20.0 | 48.2 | 57.2 | 93.1 |
-| gemma-4-26B-A4B-it | 0.38 | 0.20 | 19.6 | 143.7 (fp8) | 138.1 | 206.1 |
-| Qwen3.6-27B | 0.08 | 0.20 | 16.5 | 38.6 (fp8) | 29.0 | 49.3 |
-| Qwen3.8-27B | 0.08 | 0.21 | 16.6 | 38.6 (fp8) | 29.1 | 52.0 |
+| Model | GTX 1070 8 GB<br>own laptop<br>AirLLM tuned | RTX 2070 8 GB<br>own laptop<br>AirLLM tuned | T4 16 GB<br>Kaggle<br>AirLLM tuned | RTX PRO 6000<br>Hugging Face ZeroGPU<br>transformers bf16 | A100 40 GB<br>Modal<br>vLLM | A100 80 GB<br>Modal<br>vLLM bf16 | H100 80 GB<br>Modal<br>vLLM bf16 |
+|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | 0.33 | 0.90 | 0.78 | fails to load | 226.7 | 237.9 | 254.6 |
+| gemma-4-E4B-it | 0.50 | 1.55 | 0.97 | 23.7 | 98.8 | 116.5 | 175.6 |
+| Qwen3.5-9B | 0.25 | 1.05 | 0.59 | 30.6 | 73.3 | 88.1 | 150.1 |
+| gemma-4-12B-it | 0.19 | 0.85 | 0.47 | 20.0 | 48.2 | 57.2 | 93.1 |
+| gemma-4-26B-A4B-it | 0.08 | 0.38 | 0.20 | 19.6 | 143.7 (fp8) | 138.1 | 206.1 |
+| Qwen3.6-27B | 0.09 | 0.08 | 0.20 | 16.5 | 38.6 (fp8) | 29.0 | 49.3 |
+| Qwen3.8-27B | 0.09 | 0.08 | 0.21 | 16.6 | 38.6 (fp8) | 29.1 | 52.0 |
 
-### kaggle-t4
+### kaggle-t4: Tesla T4 16 GB · Kaggle (free notebook)
 
 Tesla T4 (15.64 GB, sm_75, bf16 native: False) · Intel(R) Xeon(R) CPU @ 2.00GHz · 33.7 GB RAM · torch 2.11.0+cu130 (CUDA 13.0) · transformers 5.20.2 · airllm 4.0.0 · bitsandbytes 0.50.2
 
@@ -55,7 +55,41 @@ I/O breakdown (cold run):
 | Qwen3.8-27B | NF4, all tensors (AirLLM 4bit) | 15.13 | 9.80 s | 1.54 | 0.27 s | off |
 | Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 13.50 s | 1.12 | 0.46 s | off |
 
-### local-rtx2070
+### local-gtx1070: GTX 1070 Max-Q 8 GB · own laptop (Windows)
+
+NVIDIA GeForce GTX 1070 with Max-Q Design (8.59 GB, sm_61, bf16 native: False) · Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz · 34.2 GB RAM · torch 2.14.1+cu126 (CUDA 12.6) · transformers 5.23.0 · airllm 4.0.0 · bitsandbytes 0.50.2
+
+| Model | Params | Weights | Layer files on disk | One-time convert | Load | TTFT cold | s/token cold | s/token warm | tok/s warm | Peak VRAM (proc / torch) | Peak RAM | Output (first words) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | 5.5B (2B eff.) | native QAT int2/4/8 + no per-layer gc | 2.1 GB | 0.2 min | 28 s | 3.7 s | 2.97 | 3.08 | 0.325 | 4.86* / 4.60 GB | 10.2 GB | A CPU cache is a small, very fast memory located close to… |
+| gemma-4-E4B-it | 8.0B (4B eff.) | bf16 + no per-layer gc | 15.0 GB | 0.7 min | 8 s | 10.3 s | 4.45 | 4.79 | 0.209 | 1.91* / 1.64 GB | 4.6 GB | A CPU cache is a small, extremely fast memory located close to… |
+| gemma-4-E4B-it | 8.0B (4B eff.) | NF4, matrices only + no per-layer gc | 8.3 GB | 0.7 min | 8 s | 5.1 s | 1.94 | 2.01 | 0.498 | 2.01* / 1.67 GB | 1.8 GB | A CPU cache is a small, fast memory located near or on… |
+| Qwen3.5-9B | 9.7B | bf16 + no per-layer gc | 17.9 GB | 0.9 min | 3 s | 19.4 s | 9.91 | 10.18 | 0.098 | 2.38* / 2.13 GB | 6.3 GB | A CPU cache is a small, high-speed memory layer situated between the… |
+| Qwen3.5-9B | 9.7B | NF4, matrices only + no per-layer gc | 5.0 GB | 0.5 min | 6 s | 8.0 s | 3.86 | 3.93 | 0.254 | 3.03* / 2.78 GB | 2.2 GB | A CPU cache is a small, high-speed memory layer situated between the… |
+| gemma-4-12B-it | 12.0B | bf16 + no per-layer gc | 23.8 GB | 1.3 min | 8 s | 27.8 s | 29.55 | 26.59 | 0.038 | 2.80* / 2.54 GB | 5.2 GB | A CPU cache is a small, high-speed memory buffer located directly on… |
+| gemma-4-12B-it | 12.0B | NF4, matrices only + no per-layer gc | 6.7 GB | 0.9 min | 5 s | 12.5 s | 5.46 | 5.39 | 0.185 | 2.84* / 2.59 GB | 1.8 GB | A CPU cache is a small, high-speed memory bank located directly on… |
+| gemma-4-26B-A4B-it | 25.8B MoE (4B act.) | NF4, matrices only + no per-layer gc | 14.2 GB | 1.6 min (lazy split) | 5 s | 24.0 s | 12.56 | 12.47 | 0.080 | 4.53* / 4.27 GB | 2.2 GB | A CPU cache works as a high-speed, small-capacity memory buffer located |
+| Qwen3.6-27B | 27.8B | NF4, matrices only + no per-layer gc | 15.1 GB | 1.6 min | 5 s | 25.8 s | 10.74 | 10.89 | 0.092 | 3.81* / 3.56 GB | 2.3 GB | A CPU cache is a small, high-speed memory component located close to… |
+| Qwen3.8-27B | 27.8B | NF4, matrices only + no per-layer gc | 15.1 GB | 1.6 min | 3 s | 24.2 s | 10.62 | 10.77 | 0.093 | 3.81* / 3.56 GB | 2.3 GB | A CPU cache is a small, high-speed memory located on or near… |
+
+\* Windows does not report per-process VRAM: whole-GPU peak, including the desktop.
+
+I/O breakdown (cold run):
+
+| Model | Weights | Streamed per token (GB) | Layer read time / token | Effective read GB/s (cold) | Host→GPU + dequant / token | Prefetch |
+|---|---|---|---|---|---|---|
+| gemma-4-E2B-it-qat-mobile-ct | native QAT int2/4/8 + no per-layer gc | 0.78 | 0.97 s | 0.80 | 1.77 s | on |
+| gemma-4-E4B-it | bf16 + no per-layer gc | 8.00 | 3.15 s | 2.54 | 1.42 s | on |
+| gemma-4-E4B-it | NF4, matrices only + no per-layer gc | 2.25 | 1.39 s | 1.62 | 0.10 s | off |
+| Qwen3.5-9B | bf16 + no per-layer gc | 17.91 | 7.62 s | 2.35 | 2.54 s | on |
+| Qwen3.5-9B | NF4, matrices only + no per-layer gc | 5.04 | 3.01 s | 1.67 | 0.19 s | off |
+| gemma-4-12B-it | bf16 + no per-layer gc | 21.80 | 25.60 s | 0.85 | 3.81 s | on |
+| gemma-4-12B-it | NF4, matrices only + no per-layer gc | 6.13 | 4.04 s | 1.52 | 0.20 s | off |
+| gemma-4-26B-A4B-it | NF4, matrices only + no per-layer gc | 13.78 | 9.83 s | 1.40 | 0.46 s | off |
+| Qwen3.6-27B | NF4, matrices only + no per-layer gc | 15.13 | 8.74 s | 1.73 | 0.62 s | off |
+| Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 8.57 s | 1.76 | 0.61 s | off |
+
+### local-rtx2070: RTX 2070 Max-Q 8 GB · own laptop (Linux)
 
 NVIDIA GeForce RTX 2070 with Max-Q Design (8.16 GB, sm_75, bf16 native: False) · Intel(R) Core(TM) i7-9750H CPU @ 2.60GHz · 33.5 GB RAM · torch 2.15.0+cu132 (CUDA 13.2) · transformers 5.23.0 · airllm 4.0.0 · bitsandbytes 0.50.2
 
@@ -113,7 +147,7 @@ I/O breakdown (cold run):
 | Qwen3.8-27B | bf16 | 53.79 | 30.68 s | 1.75 | 8.40 s | on |
 | Qwen3.8-27B | NF4, matrices only + no per-layer gc | 15.13 | 11.46 s | 1.32 | 0.21 s | off |
 
-### modal-a100-40 (direct, no AirLLM)
+### modal-a100-40: A100 SXM 40 GB · Modal (direct, no AirLLM)
 
 NVIDIA A100-SXM4-40GB (42.43 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
 
@@ -127,7 +161,7 @@ NVIDIA A100-SXM4-40GB (42.43 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.
 | Qwen3.6-27B | vLLM 0.34.0, fp8 | 55.6 GB | 178 s | 292 s | 0.058 s | **38.6** | 361 | 27.5 / 4.5 GiB | A CPU cache is a small, high-speed memory located close to the… |
 | Qwen3.8-27B | vLLM 0.34.0, fp8 | 55.6 GB | 173 s | 287 s | 0.058 s | **38.6** | 360 | 28.1 / 4.0 GiB | A CPU cache is a small, high-speed memory located on or near… |
 
-### modal-a100-80 (direct, no AirLLM)
+### modal-a100-80: A100 SXM 80 GB · Modal (direct, no AirLLM)
 
 NVIDIA A100-SXM4-80GB (85.12 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
 
@@ -141,7 +175,7 @@ NVIDIA A100-SXM4-80GB (85.12 GB), sm_80 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.
 | Qwen3.6-27B | vLLM 0.34.0, bf16 | 55.6 GB | 178 s | 268 s | 0.053 s | **29.0** | 716 | 50.1 / 17.5 GiB | A CPU cache is a small, high-speed memory located close to the… |
 | Qwen3.8-27B | vLLM 0.34.0, bf16 | 55.6 GB | 173 s | 263 s | 0.053 s | **29.1** | 723 | 50.1 / 17.5 GiB | A CPU cache is a small, high-speed memory located on or near… |
 
-### modal-h100 (direct, no AirLLM)
+### modal-h100: H100 SXM 80 GB · Modal (direct, no AirLLM)
 
 NVIDIA H100 80GB HBM3 (85.01 GB), sm_90 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.0) · transformers 5.22.2
 
@@ -155,7 +189,7 @@ NVIDIA H100 80GB HBM3 (85.01 GB), sm_90 · vllm 0.34.0 · torch 2.14.0 (CUDA 13.
 | Qwen3.6-27B | vLLM 0.34.0, bf16 | 55.6 GB | 178 s | 185 s | 0.037 s | **49.3** | 1291 | 50.1 / 18.7 GiB | A CPU cache is a small, high-speed memory located close to the… |
 | Qwen3.8-27B | vLLM 0.34.0, bf16 | 55.6 GB | 173 s | 174 s | 0.030 s | **52.0** | 1343 | 50.1 / 18.7 GiB | A CPU cache is a small, high-speed memory located on or near… |
 
-### zerogpu-rtxpro6000 (direct, no AirLLM)
+### zerogpu-rtxpro6000: RTX PRO 6000 Blackwell · Hugging Face ZeroGPU (free Space; 48 GB MIG half, full 96 GB for 26B/27B) (direct, no AirLLM)
 
 NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 2g.48gb (50.87 GB) / NVIDIA RTX PRO 6000 Blackwell Server Edition MIG 4g.96gb (101.98 GB), sm_120 · Intel(R) Xeon(R) Platinum 8559C · torch 2.11.0 (CUDA 13.0) · transformers 5.23.0
 

@@ -21,7 +21,7 @@ LABEL = {"gemma-4-E2B-it-qat-mobile-ct": "Gemma-4-E2B-qat", "gemma-4-E4B-it": "G
          "Qwen3.5-9B": "Qwen3.5-9B", "gemma-4-12B-it": "Gemma-4-12B", "gemma-4-26B-A4B-it": "Gemma-4-26B-A4B",
          "Qwen3.6-27B": "Qwen3.6-27B", "Qwen3.8-27B": "Qwen3.8-27B"}
 GARBLED = {("gemma-4-E4B-it", "4bit"), ("gemma-4-12B-it", "4bit"), ("gemma-4-26B-A4B-it", "4bit")}
-HOSTS = [("local-rtx2070", "RTX 2070 Max-Q laptop (8 GB)"), ("kaggle-t4", "Kaggle Tesla T4 (16 GB)")]
+HOSTS = [("local-rtx2070", "RTX 2070 Max-Q 8 GB · own laptop"), ("kaggle-t4", "Tesla T4 16 GB · Kaggle (free)")]
 
 # reference palette (dataviz skill): categorical slots 1-2 + chrome, light mode
 SURFACE, INK, INK2, MUTED, GRID, AXIS = "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"

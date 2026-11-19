@@ -55,8 +55,7 @@ def table(rows):
         conv = "cached" if p.get("split_preexisting") else fmt(p.get("convert_s", 0) / 60, 1, " min")
         if p.get("lazy_split") and p["lazy_split"].get("bytes_read"):
             conv += " (lazy split" + (", from Hub" if "remote" in p["lazy_split"].get("sources", []) else "") + ")"
-        vram = f"{fmt(max(c.get('peak_gpu_process_gb') or 0, w.get('peak_gpu_process_gb') or 0))} / " \
-               f"{fmt(max(c.get('torch_peak_reserved_gb') or 0, w.get('torch_peak_reserved_gb') or 0))} GB"
+        vram = f"{_vram(c, w)[0]} / {fmt(max(c.get('torch_peak_reserved_gb') or 0, w.get('torch_peak_reserved_gb') or 0))} GB"
         ram = fmt(max(c.get("peak_rss_gb") or 0, w.get("peak_rss_gb") or 0, (p.get("init_mem") or {}).get("peak_rss_gb") or 0), 1, " GB")
         text = (w.get("text") or c.get("text") or "").strip().replace("\n", " ").replace("|", "/")
         text = " ".join(text.split()[:12]) + ("…" if len(text.split()) > 12 else "")
@@ -90,11 +89,23 @@ def env_line(rows):
 
 
 GARBLED = {("gemma-4-E4B-it", "4bit"), ("gemma-4-12B-it", "4bit"), ("gemma-4-26B-A4B-it", "4bit")}
-HOST_LABEL = {"local-rtx2070": "RTX 2070 Max-Q (8 GB)", "kaggle-t4": "Kaggle T4 (16 GB)",
-              "local-gtx1070": "GTX 1070 (8 GB, Windows)",
-              "zerogpu-rtxpro6000": "HF ZeroGPU RTX PRO 6000 (48 GB MIG half; 96 GB for 26B/27B)",
-              "modal-a100-40": "Modal A100 (40 GB)", "modal-a100-80": "Modal A100 (80 GB)",
-              "modal-h100": "Modal H100 SXM (80 GB)"}
+# Who provides each GPU: two own laptops, then the cloud providers (Kaggle, Hugging Face, Modal).
+HOST_LABEL = {"local-rtx2070": "RTX 2070 Max-Q 8 GB · own laptop (Linux)",
+              "local-gtx1070": "GTX 1070 Max-Q 8 GB · own laptop (Windows)",
+              "kaggle-t4": "Tesla T4 16 GB · Kaggle (free notebook)",
+              "zerogpu-rtxpro6000": "RTX PRO 6000 Blackwell · Hugging Face ZeroGPU (free Space; 48 GB MIG half, "
+                                    "full 96 GB for 26B/27B)",
+              "modal-a100-40": "A100 SXM 40 GB · Modal", "modal-a100-80": "A100 SXM 80 GB · Modal",
+              "modal-h100": "H100 SXM 80 GB · Modal"}
+
+
+def _vram(*runs):
+    """Peak per-process VRAM; Windows (WDDM) reports none, so fall back to the whole-GPU peak."""
+    proc = max((r.get("peak_gpu_process_gb") or 0) for r in runs)
+    if proc:
+        return fmt(proc), ""
+    dev = max((r.get("peak_gpu_device_used_gb") or 0) for r in runs)
+    return (fmt(dev) + "*", "*") if dev else ("–", "")
 
 
 def _best(rows, model, tuned):
@@ -116,7 +127,8 @@ def _best(rows, model, tuned):
 def headline(hosts):
     out = ["| Model | GPU | Stock AirLLM 4.0 (best correct config) | Tuned (NF4 matrices only + no gc) | Speed-up | Peak VRAM (tuned) |",
            "|---|---|---|---|---|---|"]
-    hosts = sorted(hosts, key=lambda d: (d.name != "local-rtx2070", d.name))
+    first = ["local-rtx2070", "kaggle-t4", "local-gtx1070"]
+    hosts = sorted(hosts, key=lambda d: (first.index(d.name) if d.name in first else 9, d.name))
     for m in ORDER:
         for d in hosts:
             rows = load(d)
@@ -127,10 +139,11 @@ def headline(hosts):
             def cell(r):
                 w = r["runs"]["warm"]
                 return f"{w['s_per_decode_token']:.2f} s/token ({w['decode_tok_per_s']:.3f} tok/s), {mode_label(r).split(' (')[0].replace(' + no per-layer gc', '')}"
-            sc = cell(s) if s else ("split fails (49.9 GB shard)" if failed else "pending")
+            stock_run = any(not r.get("no_gc") for r in rows)
+            sc = cell(s) if s else ("split fails (49.9 GB shard)" if failed else "pending" if stock_run else "not run")
             tc = cell(t) if t else "pending"
             sp = f"**×{t['runs']['warm']['decode_tok_per_s'] / s['runs']['warm']['decode_tok_per_s']:.0f}**" if s and t else "–"
-            vr = f"{t['runs']['warm']['peak_gpu_process_gb']:.1f} GB" if t else "–"
+            vr = (lambda v: f"{float(v.rstrip('*')):.1f} GB" + ("*" if v.endswith("*") else ""))(_vram(t["runs"]["warm"])[0]) if t else "–"
             out.append(f"| {m} | {HOST_LABEL.get(d.name, d.name)} | {sc} | {tc} | {sp} | {vr} |")
     return "\n".join(out)
 
@@ -188,11 +201,12 @@ def env_line_direct(rows):
 
 
 AIRLLM_HOSTS = ("local-gtx1070", "local-rtx2070", "kaggle-t4")  # model streamed: does not fit
-GPU_COLS = [("local-gtx1070", "GTX 1070 8 GB<br>AirLLM tuned"),
-            ("local-rtx2070", "RTX 2070 8 GB<br>AirLLM tuned"), ("kaggle-t4", "T4 16 GB<br>AirLLM tuned"),
-            ("zerogpu-rtxpro6000", "ZeroGPU RTX PRO 6000<br>transformers bf16"),
-            ("modal-a100-40", "A100 40 GB<br>vLLM"), ("modal-a100-80", "A100 80 GB<br>vLLM bf16"),
-            ("modal-h100", "H100 80 GB<br>vLLM bf16")]
+GPU_COLS = [("local-gtx1070", "GTX 1070 8 GB<br>own laptop<br>AirLLM tuned"),
+            ("local-rtx2070", "RTX 2070 8 GB<br>own laptop<br>AirLLM tuned"),
+            ("kaggle-t4", "T4 16 GB<br>Kaggle<br>AirLLM tuned"),
+            ("zerogpu-rtxpro6000", "RTX PRO 6000<br>Hugging Face ZeroGPU<br>transformers bf16"),
+            ("modal-a100-40", "A100 40 GB<br>Modal<br>vLLM"), ("modal-a100-80", "A100 80 GB<br>Modal<br>vLLM bf16"),
+            ("modal-h100", "H100 80 GB<br>Modal<br>vLLM bf16")]
 
 
 def gpu_compare(hosts):
@@ -228,10 +242,14 @@ def main():
         rows = load(d)
         if not rows:
             continue
-        md += [f"### {d.name}", "", env_line(rows), "", table(rows), "", "I/O breakdown (cold run):", "", io_table(rows), ""]
+        note = ["", "\\* Windows does not report per-process VRAM: whole-GPU peak, including the desktop."] \
+            if any(_vram(*r["runs"].values())[1] for r in rows if r.get("status") == "ok") else []
+        md += [f"### {d.name}: {HOST_LABEL.get(d.name, d.name)}", "", env_line(rows), "", table(rows)] + note + \
+              ["", "I/O breakdown (cold run):", "", io_table(rows), ""]
     for d in direct_hosts:
         rows = load_direct(d)
-        md += [f"### {d.name} (direct, no AirLLM)", "", env_line_direct(rows), "", direct_table(rows), ""]
+        md += [f"### {d.name}: {HOST_LABEL.get(d.name, d.name)} (direct, no AirLLM)", "", env_line_direct(rows), "",
+               direct_table(rows), ""]
     text = "\n".join(md)
     compare = gpu_compare(hosts)
     (ROOT / "results" / "SUMMARY.md").write_text("### Decode tok/s by GPU\n\n" + compare + "\n\n" + text + "\n")

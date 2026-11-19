@@ -24,14 +24,14 @@ LABEL = {"gemma-4-E2B-it-qat-mobile-ct": "Gemma-4-E2B-qat", "gemma-4-E4B-it": "G
          "Qwen3.6-27B": "Qwen3.6-27B", "Qwen3.8-27B": "Qwen3.8-27B"}
 # reference palette (dataviz skill), categorical slots 1-7 in fixed order, light mode
 SURFACE, INK, INK2, MUTED, GRID, AXIS = "#fcfcfb", "#0b0b0b", "#52514e", "#898781", "#e1e0d9", "#c3c2b7"
-SERIES = [
-    ("local-rtx2070", "RTX 2070 8 GB · AirLLM tuned", "#2a78d6", "o"),
-    ("kaggle-t4", "T4 16 GB · AirLLM tuned", "#eb6834", "s"),
-    ("zerogpu-rtxpro6000", "ZeroGPU RTX PRO 6000 · transformers", "#1baf7a", "D"),
-    ("modal-a100-40", "A100 40 GB · vLLM (fp8 for 26–27B)", "#eda100", "^"),
-    ("modal-a100-80", "A100 80 GB · vLLM", "#e87ba4", "v"),
-    ("modal-h100", "H100 80 GB · vLLM", "#008300", "h"),
-    ("local-gtx1070", "GTX 1070 8 GB · AirLLM tuned", "#6250d6", "X"),
+SERIES = [  # colors follow the GPU (fixed palette slots), listed slowest to fastest
+    ("local-gtx1070", "GTX 1070 8 GB (own laptop) · AirLLM", "#6250d6", "X"),
+    ("local-rtx2070", "RTX 2070 8 GB (own laptop) · AirLLM", "#2a78d6", "o"),
+    ("kaggle-t4", "T4 16 GB (Kaggle) · AirLLM", "#eb6834", "s"),
+    ("zerogpu-rtxpro6000", "RTX PRO 6000 (Hugging Face ZeroGPU) · transformers", "#1baf7a", "D"),
+    ("modal-a100-40", "A100 40 GB (Modal) · vLLM, fp8 for 26–27B", "#eda100", "^"),
+    ("modal-a100-80", "A100 80 GB (Modal) · vLLM", "#e87ba4", "v"),
+    ("modal-h100", "H100 80 GB (Modal) · vLLM", "#008300", "h"),
 ]
 
 
@@ -56,7 +56,7 @@ def speeds(host):
 
 def main():
     plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10})
-    fig, ax = plt.subplots(figsize=(10, 5.2), facecolor=SURFACE)
+    fig, ax = plt.subplots(figsize=(10, 5.8), facecolor=SURFACE)
     ax.set_facecolor(SURFACE)
     n = len(ORDER)
     present = [(h, lab, c, mk, speeds(h)) for h, lab, c, mk in SERIES]
@@ -89,8 +89,8 @@ def main():
     ax.tick_params(axis="x", colors=MUTED, length=0)
     ax.tick_params(axis="y", colors=INK, length=0)
     ax.set_title("Same models, same prompt: streamed with AirLLM on small GPUs vs. deployed directly on big ones",
-                 loc="left", fontsize=11, color=INK, pad=34)
-    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=3, frameon=False, fontsize=8.5,
+                 loc="left", fontsize=11, color=INK, pad=62)
+    ax.legend(loc="lower left", bbox_to_anchor=(0, 1.0), ncol=2, frameon=False, fontsize=8.5,
               labelcolor=INK2, handletextpad=0.3, columnspacing=1.2)
     fig.tight_layout()
     out = ROOT / "results" / "gpus.png"
